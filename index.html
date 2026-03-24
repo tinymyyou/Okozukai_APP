@@ -1,0 +1,225 @@
+﻿<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>お小遣い受け渡し記録</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>お小遣い受け渡し記録</h1>
+      <p class="subtitle">渡した記録と受け取り確認を、端末内だけで安全に管理</p>
+      <label class="contrast-toggle">
+        <input id="contrastToggle" type="checkbox">
+        <span id="contrastToggleLabel">高コントラスト表示</span>
+      </label>
+    </header>
+
+    <section class="view-switch" aria-label="表示切替">
+      <button id="showListViewBtn" type="button" class="btn active">一覧画面</button>
+      <button id="showCalendarViewBtn" type="button" class="btn">カレンダー画面</button>
+    </section>
+
+    <div id="listView">
+      <section class="panel stats" aria-label="集計情報">
+        <div class="stat-card">
+          <span class="label">未確認</span>
+          <span id="unreceivedCount" class="value">0件</span>
+        </div>
+        <div class="stat-card">
+          <span class="label">受取確定</span>
+          <span id="receivedCount" class="value">0件</span>
+        </div>
+        <div class="stat-card">
+          <span class="label">合計金額</span>
+          <span id="totalAmount" class="value">¥0</span>
+        </div>
+      </section>
+
+      <section class="panel month-summary-panel" aria-label="月ごとの支払合計">
+        <h2>月ごとの支払合計</h2>
+        <label for="monthlyTargetMonth">
+          対象月
+          <input id="monthlyTargetMonth" type="month">
+        </label>
+        <label for="monthlyReceiverFilter">
+          受取人
+          <select id="monthlyReceiverFilter">
+            <option value="ALL">全員</option>
+          </select>
+        </label>
+        <div class="month-summary-result">
+          <p id="monthlyTotalAmount" class="month-summary-amount">¥0</p>
+          <p id="monthlyTotalCount" class="month-summary-count">0件</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="受取人ごとの色設定">
+        <h2>受取人ごとの色設定</h2>
+        <form id="receiverColorForm" class="receiver-color-form" novalidate>
+          <label>
+            受取人
+            <select id="receiverColorTarget"></select>
+          </label>
+          <label>
+            色
+            <input id="receiverColorPicker" type="color" value="#4bbcf4">
+          </label>
+          <div class="receiver-color-actions">
+            <button type="submit" class="btn">色を保存</button>
+            <button id="resetReceiverColorBtn" type="button" class="btn danger">自動色に戻す</button>
+          </div>
+        </form>
+        <div id="receiverColorList" class="receiver-color-list"></div>
+      </section>
+
+      <section class="panel" aria-label="記録追加">
+        <h2>記録追加</h2>
+        <form id="recordForm" class="record-form" novalidate>
+          <label>
+            渡した人
+            <input id="giver" name="giver" type="text" maxlength="40" list="giverCandidates" required>
+            <datalist id="giverCandidates"></datalist>
+          </label>
+
+          <label>
+            受け取る人
+            <input id="receiver" name="receiver" type="text" maxlength="40" list="receiverCandidates" required>
+            <datalist id="receiverCandidates"></datalist>
+          </label>
+
+          <label>
+            金額（円）
+            <input id="amount" name="amount" type="number" min="1" step="1" required inputmode="numeric">
+          </label>
+
+          <label>
+            渡した日時
+            <input id="givenAt" name="givenAt" type="datetime-local" required>
+          </label>
+
+          <label>
+            メモ
+            <select id="memoTemplateSelect">
+              <option value="">定型メモを選択（任意）</option>
+            </select>
+            <textarea id="memo" name="memo" rows="3" maxlength="240" placeholder="任意"></textarea>
+          </label>
+
+          <button type="submit" class="btn primary">記録を追加</button>
+        </form>
+      </section>
+
+      <section class="panel" aria-label="人の登録">
+        <h2>渡す人・受け取る人の登録</h2>
+        <form id="personForm" class="person-form" novalidate>
+          <label>
+            名前
+            <input id="personName" name="personName" type="text" maxlength="40" required>
+          </label>
+          <label>
+            使い方
+            <select id="personRole" name="personRole">
+              <option value="both">渡す人・受け取る人の両方</option>
+              <option value="giver">渡す人のみ</option>
+              <option value="receiver">受け取る人のみ</option>
+            </select>
+          </label>
+          <button type="submit" class="btn">登録する</button>
+        </form>
+        <div class="person-lists">
+          <div>
+            <p class="person-title">渡す人候補</p>
+            <div id="giverPeopleList" class="person-chip-list"></div>
+          </div>
+          <div>
+            <p class="person-title">受け取る人候補</p>
+            <div id="receiverPeopleList" class="person-chip-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="メモ定型文の登録">
+        <h2>メモ（詳細）定型文の登録</h2>
+        <form id="memoTemplateForm" class="memo-template-form" novalidate>
+          <label>
+            定型文
+            <input id="memoTemplateInput" name="memoTemplateInput" type="text" maxlength="240" required>
+          </label>
+          <button type="submit" class="btn">定型文を登録</button>
+        </form>
+        <p class="person-title">登録済み定型文</p>
+        <div id="memoTemplateList" class="person-chip-list"></div>
+      </section>
+
+      <section class="panel tools" aria-label="バックアップとデータ管理">
+        <h2>バックアップとデータ管理</h2>
+        <div class="tool-grid">
+          <button id="downloadJsonBtn" type="button" class="btn">JSONバックアップ書き出し</button>
+          <button id="downloadCsvBtn" type="button" class="btn">CSV書き出し</button>
+          <label class="btn file-btn" for="restoreFileInput">JSONから復元</label>
+          <input id="restoreFileInput" type="file" accept="application/json,.json">
+          <button id="deleteAllBtn" type="button" class="btn danger">全件削除</button>
+        </div>
+        <p id="messageArea" class="message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" aria-label="記録一覧">
+        <h2>記録一覧</h2>
+        <div id="recordsContainer" class="cards" aria-live="polite"></div>
+      </section>
+
+      <section class="panel" aria-label="受け取った人ごとの一覧">
+        <h2>受け取った人ごとの一覧</h2>
+        <label class="receiver-filter" for="receiverFilter">
+          受け取る人で絞り込み
+          <select id="receiverFilter"></select>
+        </label>
+        <div id="receiverSummary" class="receiver-summary"></div>
+        <div id="receiverRecordsContainer" class="cards" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <div id="calendarView" class="hidden">
+      <section class="panel" aria-label="カレンダー">
+        <h2>カレンダー表示</h2>
+        <div class="calendar-header">
+          <button id="prevMonthBtn" type="button" class="btn">前の月</button>
+          <p id="calendarMonthLabel" class="calendar-month-label"></p>
+          <button id="nextMonthBtn" type="button" class="btn">次の月</button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+        </div>
+        <div id="calendarGrid" class="calendar-grid" aria-live="polite"></div>
+      </section>
+
+      <section class="panel" aria-label="選択日の記録">
+        <h2 id="selectedDateLabel">選択日の記録</h2>
+        <div id="calendarRecordsContainer" class="cards" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+
+  <template id="recordCardTemplate">
+    <article class="record-card">
+      <div class="top-row">
+        <strong class="amount"></strong>
+        <span class="status-badge"></span>
+      </div>
+      <p class="people"></p>
+      <p class="datetime"></p>
+      <p class="memo"></p>
+      <p class="received-info"></p>
+      <div class="actions">
+        <button type="button" class="btn confirm-btn">受け取りました</button>
+        <button type="button" class="btn danger delete-btn">削除</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>
