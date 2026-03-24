@@ -1,20 +1,30 @@
 ﻿:root {
-  --bg: #bbded6;
+  --bg: #f4f2ec;
   --surface: #ffffff;
-  --text: #17445a;
-  --muted: #3f7f93;
-  --line: #9ccfd6;
-  --line-strong: #7ec0ca;
-  --primary: #4bbcf4;
-  --primary-press: #3aaee8;
-  --danger: #ff9ea6;
-  --danger-press: #f28d96;
-  --pending-bg: #e5f7fd;
-  --pending-text: #216e8d;
-  --done-bg: #d9f2ef;
-  --done-text: #1f7a78;
-  --shadow: 0 8px 20px rgba(33, 110, 141, 0.14);
-  --focus-ring: #8cd5d2;
+  --text: #323339;
+  --muted: #585b5f;
+  --line: #c5c9bb;
+  --line-strong: #aab09f;
+  --primary: #6cbf84;
+  --primary-press: #57a86e;
+  --danger: #f26968;
+  --danger-press: #de5a59;
+  --pending-bg: #fbe0da;
+  --pending-text: #b9474a;
+  --done-bg: #dff2e5;
+  --done-text: #2f6f45;
+  --shadow: 0 10px 22px rgba(50, 51, 57, 0.14);
+  --focus-ring: #f26968;
+  --color-red: #f26968;
+  --color-orange: #f2ad9f;
+  --color-green: #6cbf84;
+  --color-blue: #dfe2d2;
+  --color-cyan: #323339;
+  --soft-red: #f7cfce;
+  --soft-orange: #f8d7d0;
+  --soft-green: #d8efdf;
+  --soft-blue: #f0f1e8;
+  --soft-cyan: #e9eaeb;
   --btn-min-h: 50px;
   --btn-pad: 13px 14px;
   --label-size: 0.95rem;
@@ -22,23 +32,6 @@
   --body-line-height: 1.4;
 }
 
-body[data-contrast="high"] {
-  --text: #0f2f40;
-  --muted: #21586e;
-  --line: #6daab6;
-  --line-strong: #4f95a4;
-  --primary-press: #2fa9e6;
-  --danger: #f08f98;
-  --danger-press: #de7f89;
-  --pending-text: #125a77;
-  --done-text: #155f5d;
-  --focus-ring: #2fa9e6;
-  --btn-min-h: 54px;
-  --btn-pad: 14px 16px;
-  --label-size: 1.02rem;
-  --input-size: 1.05rem;
-  --body-line-height: 1.5;
-}
 * {
   box-sizing: border-box;
 }
@@ -46,7 +39,11 @@ body[data-contrast="high"] {
 body {
   margin: 0;
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
-  background: radial-gradient(circle at top left, #ffffff, #dff4f7 45%, var(--bg));
+  background:
+    radial-gradient(circle at 12% 8%, #f8c6bb, transparent 34%),
+    radial-gradient(circle at 86% 18%, #ef9f92, transparent 30%),
+    radial-gradient(circle at 20% 92%, #f6b9ac, transparent 28%),
+    linear-gradient(165deg, #f9cbc1 0%, #f2ad9f 52%, #e99a8c 100%);
   color: var(--text);
   line-height: var(--body-line-height);
 }
@@ -67,22 +64,8 @@ body {
   color: var(--muted);
   font-size: 1rem;
 }
-.contrast-toggle {
-  margin-top: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-.contrast-toggle input {
-  width: 22px;
-  height: 22px;
-}
-
 .panel {
-  background: var(--surface);
+  background: linear-gradient(180deg, #ffffff, #f8fcff);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 14px;
@@ -93,6 +76,59 @@ body {
 .panel h2 {
   margin: 0 0 12px;
   font-size: 1.2rem;
+}
+
+#listView .panel:nth-of-type(5n + 1) {
+  background: linear-gradient(180deg, #ffffff, var(--soft-red));
+}
+
+#listView .panel:nth-of-type(5n + 2) {
+  background: linear-gradient(180deg, #ffffff, var(--soft-orange));
+}
+
+#listView .panel:nth-of-type(5n + 3) {
+  background: linear-gradient(180deg, #ffffff, var(--soft-green));
+}
+
+#listView .panel:nth-of-type(5n + 4) {
+  background: linear-gradient(180deg, #ffffff, var(--soft-blue));
+}
+
+#listView .panel:nth-of-type(5n + 5) {
+  background: linear-gradient(180deg, #ffffff, var(--soft-cyan));
+}
+
+.panel.is-collapsible .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panel.is-collapsible .panel-header h2 {
+  margin: 0;
+}
+
+.panel-toggle-btn {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--soft-orange), var(--soft-cyan));
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  min-height: 34px;
+  padding: 8px 12px;
+}
+
+.panel-toggle-btn:active {
+  transform: translateY(1px);
+}
+
+.panel.is-collapsible.panel-collapsed .panel-header {
+  margin-bottom: 0;
 }
 
 .hidden {
@@ -106,19 +142,36 @@ body {
   margin-top: 12px;
 }
 
-.view-switch .btn.active {
-  background: var(--primary);
-  color: #fff;
+.view-switch .btn {
+  background: #eef0e5;
+  color: var(--pal-moss);
+  border: 1px solid var(--line-strong);
 }
 
-.stats {
+#showCalendarViewBtn {
+  background: #F26968;
+  color: #ffffff;
+  border-color: #de5a59;
+}
+
+#showCalendarViewBtn.active {
+  background: #F26968;
+  color: #ffffff;
+}
+
+.view-switch .btn.active {
+  background: linear-gradient(135deg, #8fcfa2, #b6ddc3);
+  color: #ffffff;
+}
+
+.stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 
 .stat-card {
-  background: #ecf9fb;
+  background: linear-gradient(180deg, #ffffff, var(--soft-blue));
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px;
@@ -144,7 +197,7 @@ body {
 .month-summary-result {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #ecf9fb;
+  background: linear-gradient(180deg, var(--soft-orange), var(--soft-cyan));
   padding: 13px;
 }
 
@@ -183,7 +236,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 8px 10px;
-  background: #ecf9fb;
+  background: linear-gradient(180deg, var(--soft-orange), var(--soft-blue));
 }
 
 .receiver-color-main {
@@ -254,7 +307,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 10px;
-  background: #ecf9fb;
+  background: linear-gradient(180deg, var(--soft-green), var(--soft-cyan));
   font-size: 0.9rem;
 }
 
@@ -314,7 +367,7 @@ textarea {
   font-size: var(--input-size);
   font-weight: 700;
   cursor: pointer;
-  background: #d9eef4;
+  background: linear-gradient(135deg, var(--soft-orange), var(--soft-green));
   color: var(--text);
   min-height: var(--btn-min-h);
 }
@@ -324,12 +377,12 @@ textarea {
 }
 
 .btn.primary {
-  background: var(--primary);
-  color: #fff;
+  background: linear-gradient(135deg, #8fcfa2, #b6ddc3);
+  color: #ffffff;
 }
 
 .btn.primary:hover {
-  background: var(--primary-press);
+  background: linear-gradient(135deg, #82c796, #abd8b8);
 }
 
 .btn.danger {
@@ -382,7 +435,7 @@ textarea {
 .receiver-summary-card {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #ecf9fb;
+  background: linear-gradient(180deg, var(--soft-red), var(--soft-cyan));
   padding: 10px;
 }
 
@@ -459,7 +512,7 @@ textarea {
 
 .calendar-day.selected {
   border-color: var(--primary);
-  box-shadow: inset 0 0 0 2px rgba(75, 188, 244, 0.25);
+  box-shadow: inset 0 0 0 2px rgba(108, 191, 132, 0.35);
 }
 
 .calendar-day-head {
@@ -533,7 +586,7 @@ textarea {
   font-size: 0.98rem;
   font-weight: 700;
   color: var(--done-text);
-  background: #eaf7f4;
+  background: #eef9f0;
   border-radius: 10px;
   padding: 8px;
 }

@@ -5,15 +5,20 @@
   const PEOPLE_STORAGE_KEY = "allowancePeopleV1";
   const MEMO_TEMPLATES_STORAGE_KEY = "allowanceMemoTemplatesV1";
   const RECEIVER_COLORS_STORAGE_KEY = "allowanceReceiverColorsV1";
-  const CONTRAST_MODE_STORAGE_KEY = "allowanceContrastModeV1";
   const APP_EXPORT_VERSION = 1;
   const RECEIVER_COLOR_PALETTE = [
-    { accent: "#4BBCF4", soft: "#E8F8FE" },
-    { accent: "#61C0BF", soft: "#E8F7F4" },
-    { accent: "#FFB6B9", soft: "#FFF1F2" },
-    { accent: "#88D4C6", soft: "#ECF9F5" },
-    { accent: "#7FB9F5", soft: "#EEF5FE" },
-    { accent: "#9DD9CF", soft: "#EFFAF7" }
+    { accent: "#E53935", soft: "#FDECEA" },
+    { accent: "#1E88E5", soft: "#EAF3FD" },
+    { accent: "#FB8C00", soft: "#FFF3E7" },
+    { accent: "#43A047", soft: "#EAF6ED" },
+    { accent: "#8E24AA", soft: "#F5EAF9" },
+    { accent: "#00ACC1", soft: "#E6F7FA" },
+    { accent: "#D81B60", soft: "#FDEAF1" },
+    { accent: "#3949AB", soft: "#EDEFFD" },
+    { accent: "#7CB342", soft: "#F2F8E9" },
+    { accent: "#F4511E", soft: "#FEEEE8" },
+    { accent: "#6D4C41", soft: "#F2EEEC" },
+    { accent: "#00897B", soft: "#E7F5F3" }
   ];
 
   /** @type {Array<Record<string, any>>} */
@@ -55,8 +60,6 @@
   const receiverColorPicker = document.getElementById("receiverColorPicker");
   const resetReceiverColorBtn = document.getElementById("resetReceiverColorBtn");
   const receiverColorList = document.getElementById("receiverColorList");
-  const contrastToggle = document.getElementById("contrastToggle");
-  const contrastToggleLabel = document.getElementById("contrastToggleLabel");
 
   const recordsContainer = document.getElementById("recordsContainer");
   const cardTemplate = document.getElementById("recordCardTemplate");
@@ -93,7 +96,7 @@
     // 入力しやすいよう、初期値に現在日時(分単位)を設定
     givenAtInput.value = toDatetimeLocalValue(new Date());
     monthlyTargetMonthInput.value = monthlyTargetMonthKey;
-    loadContrastModeFromStorage();
+    setupCollapsiblePanels();
     loadRecordsFromStorage();
     loadPeopleFromStorage();
     loadMemoTemplatesFromStorage();
@@ -126,11 +129,55 @@
     receiverColorTargetSelect.addEventListener("change", onReceiverColorTargetChanged);
     resetReceiverColorBtn.addEventListener("click", onResetReceiverColor);
     receiverColorList.addEventListener("click", onClickReceiverColorList);
-    contrastToggle.addEventListener("change", onContrastToggleChanged);
     showListViewBtn.addEventListener("click", () => switchView("list"));
     showCalendarViewBtn.addEventListener("click", () => switchView("calendar"));
     prevMonthBtn.addEventListener("click", () => moveCalendarMonth(-1));
     nextMonthBtn.addEventListener("click", () => moveCalendarMonth(1));
+  }
+
+  function setupCollapsiblePanels() {
+    const panels = [...document.querySelectorAll("section.panel")];
+    panels.forEach((panel) => {
+      const sectionLabel = toSafeString(panel.getAttribute("aria-label"));
+      panel.classList.add("is-collapsible");
+
+      let heading = panel.querySelector(":scope > h2");
+      if (!heading) {
+        heading = document.createElement("h2");
+        heading.textContent = sectionLabel || "セクション";
+        panel.prepend(heading);
+      }
+
+      const header = document.createElement("div");
+      header.className = "panel-header";
+      panel.insertBefore(header, heading);
+      header.appendChild(heading);
+
+      const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className = "panel-toggle-btn";
+      header.appendChild(toggleBtn);
+
+      const panelBody = document.createElement("div");
+      panelBody.className = "panel-body";
+      while (header.nextSibling) {
+        panelBody.appendChild(header.nextSibling);
+      }
+      panel.appendChild(panelBody);
+
+      const applyPanelState = (isCollapsed) => {
+        panel.classList.toggle("panel-collapsed", isCollapsed);
+        panelBody.hidden = isCollapsed;
+        toggleBtn.textContent = isCollapsed ? "開く" : "閉じる";
+        toggleBtn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      };
+
+      const shouldStartCollapsed = sectionLabel !== "カレンダー" && sectionLabel !== "記録追加";
+      applyPanelState(shouldStartCollapsed);
+      toggleBtn.addEventListener("click", () => {
+        applyPanelState(!panel.classList.contains("panel-collapsed"));
+      });
+    });
   }
 
   function onSubmitRecord(event) {
@@ -273,12 +320,6 @@
     renderMonthlySummary();
   }
 
-  function onContrastToggleChanged(event) {
-    const isHigh = Boolean(event.target.checked);
-    applyContrastMode(isHigh ? "high" : "normal");
-    saveContrastModeToStorage(isHigh ? "high" : "normal");
-  }
-
   function onReceiverColorTargetChanged(event) {
     receiverColorTargetValue = event.target.value;
     syncReceiverColorPicker();
@@ -391,8 +432,7 @@
         records,
         people,
         memoTemplates,
-        receiverColors,
-        contrastMode: document.body.getAttribute("data-contrast") === "high" ? "high" : "normal"
+        receiverColors
       };
       const jsonText = JSON.stringify(payload, null, 2);
       const fileName = `allowance-backup-${formatStampForFileName(new Date())}.json`;
@@ -457,7 +497,6 @@
         const restoredPeople = extractAndValidatePeople(parsed, restoredRecords);
         const restoredMemoTemplates = extractAndValidateMemoTemplates(parsed);
         const restoredReceiverColors = extractAndValidateReceiverColors(parsed);
-        const restoredContrastMode = extractAndValidateContrastMode(parsed);
 
         const ok = window.confirm(`バックアップから${restoredRecords.length}件を復元します。現在のデータは上書きされます。よろしいですか？`);
         if (!ok) {
@@ -469,8 +508,6 @@
         people = restoredPeople;
         memoTemplates = restoredMemoTemplates;
         receiverColors = restoredReceiverColors;
-        applyContrastMode(restoredContrastMode);
-        saveContrastModeToStorage(restoredContrastMode);
         persistAndRender();
         showMessage("復元が完了しました。", false);
       } catch (error) {
@@ -531,11 +568,6 @@
       normalized[safeName] = safeColor;
     });
     return normalized;
-  }
-
-  function extractAndValidateContrastMode(payload) {
-    const raw = payload && payload.contrastMode;
-    return raw === "high" ? "high" : "normal";
   }
 
   function validateAndNormalizeRecord(raw) {
@@ -673,12 +705,6 @@
     }
   }
 
-  function loadContrastModeFromStorage() {
-    const stored = toSafeString(window.localStorage.getItem(CONTRAST_MODE_STORAGE_KEY));
-    const mode = stored === "high" ? "high" : "normal";
-    applyContrastMode(mode);
-  }
-
   function persistAndRender() {
     saveRecordsToStorage();
     savePeopleToStorage();
@@ -701,11 +727,6 @@
 
   function saveReceiverColorsToStorage() {
     window.localStorage.setItem(RECEIVER_COLORS_STORAGE_KEY, JSON.stringify(receiverColors));
-  }
-
-  function saveContrastModeToStorage(mode) {
-    const safeMode = mode === "high" ? "high" : "normal";
-    window.localStorage.setItem(CONTRAST_MODE_STORAGE_KEY, safeMode);
   }
 
   function renderAll() {
@@ -1218,18 +1239,6 @@
     element.classList.add("receiver-colored");
     element.style.setProperty("--receiver-accent", accent);
     element.style.setProperty("--receiver-soft", soft);
-  }
-
-  function applyContrastMode(mode) {
-    const isHigh = mode === "high";
-    if (isHigh) {
-      document.body.setAttribute("data-contrast", "high");
-    } else {
-      document.body.removeAttribute("data-contrast");
-    }
-
-    contrastToggle.checked = isHigh;
-    contrastToggleLabel.textContent = isHigh ? "高コントラスト表示（ON）" : "高コントラスト表示（OFF）";
   }
 
   function getReceiverColor(receiverName) {

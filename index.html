@@ -3,18 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>お小遣い受け渡し記録</title>
+  <title>お小遣い管理帳</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="app">
     <header class="app-header">
-      <h1>お小遣い受け渡し記録</h1>
-      <p class="subtitle">渡した記録と受け取り確認を、端末内だけで安全に管理</p>
-      <label class="contrast-toggle">
-        <input id="contrastToggle" type="checkbox">
-        <span id="contrastToggleLabel">高コントラスト表示</span>
-      </label>
+      <h1>お小遣い管理帳</h1>
     </header>
 
     <section class="view-switch" aria-label="表示切替">
@@ -23,58 +18,6 @@
     </section>
 
     <div id="listView">
-      <section class="panel stats" aria-label="集計情報">
-        <div class="stat-card">
-          <span class="label">未確認</span>
-          <span id="unreceivedCount" class="value">0件</span>
-        </div>
-        <div class="stat-card">
-          <span class="label">受取確定</span>
-          <span id="receivedCount" class="value">0件</span>
-        </div>
-        <div class="stat-card">
-          <span class="label">合計金額</span>
-          <span id="totalAmount" class="value">¥0</span>
-        </div>
-      </section>
-
-      <section class="panel month-summary-panel" aria-label="月ごとの支払合計">
-        <h2>月ごとの支払合計</h2>
-        <label for="monthlyTargetMonth">
-          対象月
-          <input id="monthlyTargetMonth" type="month">
-        </label>
-        <label for="monthlyReceiverFilter">
-          受取人
-          <select id="monthlyReceiverFilter">
-            <option value="ALL">全員</option>
-          </select>
-        </label>
-        <div class="month-summary-result">
-          <p id="monthlyTotalAmount" class="month-summary-amount">¥0</p>
-          <p id="monthlyTotalCount" class="month-summary-count">0件</p>
-        </div>
-      </section>
-
-      <section class="panel" aria-label="受取人ごとの色設定">
-        <h2>受取人ごとの色設定</h2>
-        <form id="receiverColorForm" class="receiver-color-form" novalidate>
-          <label>
-            受取人
-            <select id="receiverColorTarget"></select>
-          </label>
-          <label>
-            色
-            <input id="receiverColorPicker" type="color" value="#4bbcf4">
-          </label>
-          <div class="receiver-color-actions">
-            <button type="submit" class="btn">色を保存</button>
-            <button id="resetReceiverColorBtn" type="button" class="btn danger">自動色に戻す</button>
-          </div>
-        </form>
-        <div id="receiverColorList" class="receiver-color-list"></div>
-      </section>
-
       <section class="panel" aria-label="記録追加">
         <h2>記録追加</h2>
         <form id="recordForm" class="record-form" novalidate>
@@ -110,6 +53,88 @@
 
           <button type="submit" class="btn primary">記録を追加</button>
         </form>
+      </section>
+
+      <section class="panel" aria-label="受け取った人ごとの一覧">
+        <h2>受け取った人ごとの一覧</h2>
+        <label class="receiver-filter" for="receiverFilter">
+          受け取る人で絞り込み
+          <select id="receiverFilter"></select>
+        </label>
+        <div id="receiverSummary" class="receiver-summary"></div>
+        <div id="receiverRecordsContainer" class="cards" aria-live="polite"></div>
+      </section>
+
+      <section class="panel month-summary-panel" aria-label="月ごとの支払合計">
+        <h2>月ごとの支払合計</h2>
+        <label for="monthlyTargetMonth">
+          対象月
+          <input id="monthlyTargetMonth" type="month">
+        </label>
+        <label for="monthlyReceiverFilter">
+          受取人
+          <select id="monthlyReceiverFilter">
+            <option value="ALL">全員</option>
+          </select>
+        </label>
+        <div class="month-summary-result">
+          <p id="monthlyTotalAmount" class="month-summary-amount">¥0</p>
+          <p id="monthlyTotalCount" class="month-summary-count">0件</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="集計情報">
+        <h2>集計情報</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="label">未確認</span>
+            <span id="unreceivedCount" class="value">0件</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">受取確定</span>
+            <span id="receivedCount" class="value">0件</span>
+          </div>
+          <div class="stat-card">
+            <span class="label">合計金額</span>
+            <span id="totalAmount" class="value">¥0</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="記録一覧">
+        <h2>記録一覧</h2>
+        <div id="recordsContainer" class="cards" aria-live="polite"></div>
+      </section>
+
+      <section class="panel tools" aria-label="バックアップとデータ管理">
+        <h2>バックアップとデータ管理</h2>
+        <div class="tool-grid">
+          <button id="downloadJsonBtn" type="button" class="btn">JSONバックアップ書き出し</button>
+          <button id="downloadCsvBtn" type="button" class="btn">CSV書き出し</button>
+          <label class="btn file-btn" for="restoreFileInput">JSONから復元</label>
+          <input id="restoreFileInput" type="file" accept="application/json,.json">
+          <button id="deleteAllBtn" type="button" class="btn danger">全件削除</button>
+        </div>
+        <p id="messageArea" class="message" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" aria-label="受取人ごとの色設定">
+        <h2>受取人ごとの色設定</h2>
+        <form id="receiverColorForm" class="receiver-color-form" novalidate>
+          <label>
+            受取人
+            <select id="receiverColorTarget"></select>
+          </label>
+          <label>
+            色
+            <input id="receiverColorPicker" type="color" value="#4bbcf4">
+          </label>
+          <div class="receiver-color-actions">
+            <button type="submit" class="btn">色を保存</button>
+            <button id="resetReceiverColorBtn" type="button" class="btn danger">自動色に戻す</button>
+          </div>
+        </form>
+        <div id="receiverColorList" class="receiver-color-list"></div>
       </section>
 
       <section class="panel" aria-label="人の登録">
@@ -152,33 +177,6 @@
         </form>
         <p class="person-title">登録済み定型文</p>
         <div id="memoTemplateList" class="person-chip-list"></div>
-      </section>
-
-      <section class="panel tools" aria-label="バックアップとデータ管理">
-        <h2>バックアップとデータ管理</h2>
-        <div class="tool-grid">
-          <button id="downloadJsonBtn" type="button" class="btn">JSONバックアップ書き出し</button>
-          <button id="downloadCsvBtn" type="button" class="btn">CSV書き出し</button>
-          <label class="btn file-btn" for="restoreFileInput">JSONから復元</label>
-          <input id="restoreFileInput" type="file" accept="application/json,.json">
-          <button id="deleteAllBtn" type="button" class="btn danger">全件削除</button>
-        </div>
-        <p id="messageArea" class="message" role="status" aria-live="polite"></p>
-      </section>
-
-      <section class="panel" aria-label="記録一覧">
-        <h2>記録一覧</h2>
-        <div id="recordsContainer" class="cards" aria-live="polite"></div>
-      </section>
-
-      <section class="panel" aria-label="受け取った人ごとの一覧">
-        <h2>受け取った人ごとの一覧</h2>
-        <label class="receiver-filter" for="receiverFilter">
-          受け取る人で絞り込み
-          <select id="receiverFilter"></select>
-        </label>
-        <div id="receiverSummary" class="receiver-summary"></div>
-        <div id="receiverRecordsContainer" class="cards" aria-live="polite"></div>
       </section>
     </div>
 
