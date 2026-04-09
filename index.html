@@ -17,6 +17,8 @@
       <button id="showCalendarViewBtn" type="button" class="btn">カレンダー画面</button>
     </section>
 
+    <p id="messageArea" class="message" role="status" aria-live="polite"></p>
+
     <div id="listView">
       <section class="panel" aria-label="記録追加">
         <h2>記録追加</h2>
@@ -62,12 +64,7 @@
 
       <section class="panel" aria-label="受け取った人ごとの一覧">
         <h2>受け取った人ごとの一覧</h2>
-        <label class="receiver-filter" for="receiverFilter">
-          受け取る人で絞り込み
-          <select id="receiverFilter"></select>
-        </label>
         <div id="receiverSummary" class="receiver-summary"></div>
-        <div id="receiverRecordsContainer" class="cards" aria-live="polite"></div>
       </section>
 
       <section class="panel month-summary-panel" aria-label="月ごとの支払合計">
@@ -106,97 +103,100 @@
         </div>
       </section>
 
-      <section class="panel tools" aria-label="バックアップとデータ管理">
-        <h2>バックアップとデータ管理</h2>
-        <div class="tool-grid">
-          <button id="downloadJsonBtn" type="button" class="btn">JSONバックアップ書き出し</button>
-          <button id="downloadCsvBtn" type="button" class="btn">CSV書き出し</button>
-          <label class="btn file-btn" for="restoreFileInput">JSONから復元</label>
-          <input id="restoreFileInput" type="file" accept="application/json,.json">
-          <button id="deleteAllBtn" type="button" class="btn danger">全件削除</button>
-        </div>
-        <p id="messageArea" class="message" role="status" aria-live="polite"></p>
-      </section>
+      <section class="panel settings-panel" aria-label="設定">
+        <h2>設定</h2>
 
-      <section class="panel" aria-label="受取人ごとの色設定">
-        <h2>受取人ごとの色設定</h2>
-        <form id="receiverColorForm" class="receiver-color-form" novalidate>
-          <label>
-            受取人
-            <select id="receiverColorTarget"></select>
-          </label>
-          <label>
-            色
-            <input id="receiverColorPicker" type="color" value="#4bbcf4">
-          </label>
-          <div class="receiver-color-actions">
-            <button type="submit" class="btn">色を保存</button>
-            <button id="resetReceiverColorBtn" type="button" class="btn danger">自動色に戻す</button>
-          </div>
-        </form>
-        <div id="receiverColorList" class="receiver-color-list"></div>
-      </section>
-
-      <section class="panel" aria-label="受取人ごとのPIN設定">
-        <h2>受取人ごとのPIN設定</h2>
-        <form id="receiverPinForm" class="receiver-pin-form" novalidate>
-          <label>
-            受取人
-            <select id="receiverPinTarget"></select>
-          </label>
-          <label>
-            PIN（4桁）
-            <input id="receiverPinInput" type="password" maxlength="4" inputmode="numeric" pattern="\d{4}" placeholder="4桁の数字">
-          </label>
-          <div class="receiver-pin-actions">
-            <button type="submit" class="btn">PINを保存/変更</button>
-            <button id="deleteReceiverPinBtn" type="button" class="btn danger">PINを削除</button>
-          </div>
-        </form>
-        <p class="pin-note">※PINは端末の localStorage に保存されます。</p>
-        <div id="receiverPinList" class="receiver-pin-list"></div>
-      </section>
-
-      <section class="panel" aria-label="人の登録">
-        <h2>渡す人・受け取る人の登録</h2>
-        <form id="personForm" class="person-form" novalidate>
-          <label>
-            名前
-            <input id="personName" name="personName" type="text" maxlength="40" required>
-          </label>
-          <label>
-            使い方
-            <select id="personRole" name="personRole">
-              <option value="both">渡す人・受け取る人の両方</option>
-              <option value="giver">渡す人のみ</option>
-              <option value="receiver">受け取る人のみ</option>
-            </select>
-          </label>
-          <button type="submit" class="btn">登録する</button>
-        </form>
-        <div class="person-lists">
-          <div>
-            <p class="person-title">渡す人候補</p>
-            <div id="giverPeopleList" class="person-chip-list"></div>
-          </div>
-          <div>
-            <p class="person-title">受け取る人候補</p>
-            <div id="receiverPeopleList" class="person-chip-list"></div>
+        <div class="settings-group" aria-label="人の登録">
+          <h3>人の登録</h3>
+          <form id="personForm" class="person-form" novalidate>
+            <label>
+              名前
+              <input id="personName" name="personName" type="text" maxlength="40" required>
+            </label>
+            <label>
+              使い方
+              <select id="personRole" name="personRole">
+                <option value="both">渡す人・受け取る人の両方</option>
+                <option value="giver">渡す人のみ</option>
+                <option value="receiver">受け取る人のみ</option>
+              </select>
+            </label>
+            <button type="submit" class="btn">登録する</button>
+          </form>
+          <div class="person-lists">
+            <div>
+              <p class="person-title">渡す人候補</p>
+              <div id="giverPeopleList" class="person-chip-list"></div>
+            </div>
+            <div>
+              <p class="person-title">受け取る人候補</p>
+              <div id="receiverPeopleList" class="person-chip-list"></div>
+            </div>
           </div>
         </div>
-      </section>
 
-      <section class="panel" aria-label="メモ定型文の登録">
-        <h2>メモ（詳細）定型文の登録</h2>
-        <form id="memoTemplateForm" class="memo-template-form" novalidate>
-          <label>
-            定型文
-            <input id="memoTemplateInput" name="memoTemplateInput" type="text" maxlength="240" required>
-          </label>
-          <button type="submit" class="btn">定型文を登録</button>
-        </form>
-        <p class="person-title">登録済み定型文</p>
-        <div id="memoTemplateList" class="person-chip-list"></div>
+        <div class="settings-group" aria-label="メモ定型文の登録">
+          <h3>メモ定型文の登録</h3>
+          <form id="memoTemplateForm" class="memo-template-form" novalidate>
+            <label>
+              定型文
+              <input id="memoTemplateInput" name="memoTemplateInput" type="text" maxlength="240" required>
+            </label>
+            <button type="submit" class="btn">定型文を登録</button>
+          </form>
+          <p class="person-title">登録済み定型文</p>
+          <div id="memoTemplateList" class="person-chip-list"></div>
+        </div>
+
+        <div class="settings-group" aria-label="受取人ごとの色設定">
+          <h3>受取人ごとの色設定</h3>
+          <form id="receiverColorForm" class="receiver-color-form" novalidate>
+            <label>
+              受取人
+              <select id="receiverColorTarget"></select>
+            </label>
+            <label>
+              色
+              <input id="receiverColorPicker" type="color" value="#4bbcf4">
+            </label>
+            <div class="receiver-color-actions">
+              <button type="submit" class="btn">色を保存</button>
+              <button id="resetReceiverColorBtn" type="button" class="btn danger">自動色に戻す</button>
+            </div>
+          </form>
+          <div id="receiverColorList" class="receiver-color-list"></div>
+        </div>
+
+        <div class="settings-group" aria-label="受取人ごとのPIN設定">
+          <h3>受取人ごとのPIN設定</h3>
+          <form id="receiverPinForm" class="receiver-pin-form" novalidate>
+            <label>
+              受取人
+              <select id="receiverPinTarget"></select>
+            </label>
+            <label>
+              PIN（4桁）
+              <input id="receiverPinInput" type="password" maxlength="4" inputmode="numeric" pattern="\d{4}" placeholder="4桁の数字">
+            </label>
+            <div class="receiver-pin-actions">
+              <button type="submit" class="btn">PINを保存/変更</button>
+              <button id="deleteReceiverPinBtn" type="button" class="btn danger">PINを削除</button>
+            </div>
+          </form>
+          <p class="pin-note">※PINは端末の localStorage に保存されます。</p>
+          <div id="receiverPinList" class="receiver-pin-list"></div>
+        </div>
+
+        <div class="settings-group" aria-label="バックアップとデータ管理">
+          <h3>バックアップとデータ管理</h3>
+          <div class="tool-grid">
+            <button id="downloadJsonBtn" type="button" class="btn">JSONバックアップ書き出し</button>
+            <button id="downloadCsvBtn" type="button" class="btn">CSV書き出し</button>
+            <label class="btn file-btn" for="restoreFileInput">JSONから復元</label>
+            <input id="restoreFileInput" type="file" accept="application/json,.json">
+            <button id="deleteAllBtn" type="button" class="btn danger">全件削除</button>
+          </div>
+        </div>
       </section>
     </div>
 

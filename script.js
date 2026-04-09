@@ -6,6 +6,7 @@
   const MEMO_TEMPLATES_STORAGE_KEY = "allowanceMemoTemplatesV1";
   const RECEIVER_COLORS_STORAGE_KEY = "allowanceReceiverColorsV1";
   const RECEIVER_PINS_STORAGE_KEY = "allowanceReceiverPinsV1";
+  const RECEIVER_PIN_LOCKS_STORAGE_KEY = "allowanceReceiverPinLocksV1";
   const APP_EXPORT_VERSION = 2;
   const RECEIVER_COLOR_PALETTE = [
     { accent: "#E53935", soft: "#FDECEA" },
@@ -32,6 +33,8 @@
   let receiverColors = {};
   /** @type {Record<string, {salt:string,hash:string,updatedAt:string}>} */
   let receiverPins = {};
+  /** @type {Record<string, {failCount:number,lockUntil:string|null}>} */
+  let receiverPinLocks = {};
 
   const form = document.getElementById("recordForm");
   const giverInput = document.getElementById("giver");
@@ -77,9 +80,7 @@
 
   const recordsContainer = document.getElementById("recordsContainer");
   const cardTemplate = document.getElementById("recordCardTemplate");
-  const receiverFilterSelect = document.getElementById("receiverFilter");
   const receiverSummaryEl = document.getElementById("receiverSummary");
-  const receiverRecordsContainer = document.getElementById("receiverRecordsContainer");
   const showListViewBtn = document.getElementById("showListViewBtn");
   const showCalendarViewBtn = document.getElementById("showCalendarViewBtn");
   const listView = document.getElementById("listView");
@@ -96,7 +97,7 @@
   const restoreFileInput = document.getElementById("restoreFileInput");
   const deleteAllBtn = document.getElementById("deleteAllBtn");
   const messageArea = document.getElementById("messageArea");
-  let receiverFilterValue = "ALL";
+  let expandedReceiverName = "";
   let currentView = "list";
   let calendarMonthCursor = startOfMonth(new Date());
   let selectedDateKey = toDateKey(new Date());
@@ -120,6 +121,7 @@
     loadMemoTemplatesFromStorage();
     loadReceiverColorsFromStorage();
     loadReceiverPinsFromStorage();
+    loadReceiverPinLocksFromStorage();
     if (people.length === 0 && records.length > 0) {
       people = derivePeopleFromRecords(records);
       savePeopleToStorage();
@@ -135,7 +137,6 @@
     downloadCsvBtn.addEventListener("click", exportCsv);
     restoreFileInput.addEventListener("change", onRestoreFileSelected);
     deleteAllBtn.addEventListener("click", onDeleteAll);
-    receiverFilterSelect.addEventListener("change", onReceiverFilterChanged);
     personForm.addEventListener("submit", onSubmitPerson);
     giverPeopleList.addEventListener("click", onClickPersonChipDelete);
     receiverPeopleList.addEventListener("click", onClickPersonChipDelete);
@@ -242,7 +243,7 @@
     ].join("\n");
     const ok = window.confirm(confirmationText);
     if (!ok) {
-      showMessage("登録をキャンセルしました。入力内容は保持されています。", true);
+      showMessage("登録をキャンセルしました。入力内容は保持されています。", false);
       return;
     }
 
@@ -435,6 +436,11 @@
       return;
     }
 
+    if (receiverPins[receiverPinTargetValue]) {
+      const verified = await requestPinVerification(receiverPinTargetValue, "PIN変更");
+      if (!verified) return;
+    }
+
     const pin = toSafeString(receiverPinInput.value);
     if (!isValidPin(pin)) {
       showMessage("PINは4桁の数字で入力してください。", true);
@@ -461,10 +467,15 @@
     const ok = window.confirm(`「${receiverPinTargetValue}」のPIN設定を削除しますか？`);
     if (!ok) return;
 
-    delete receiverPins[receiverPinTargetValue];
-    saveReceiverPinsToStorage();
-    renderReceiverPinManagement();
-    showMessage("PIN設定を削除しました。", false);
+    requestPinVerification(receiverPinTargetValue, "PIN削除").then((verified) => {
+      if (!verified) return;
+      delete receiverPins[receiverPinTargetValue];
+      saveReceiverPinsToStorage();
+      delete receiverPinLocks[receiverPinTargetValue];
+      saveReceiverPinLocksToStorage();
+      renderReceiverPinManagement();
+      showMessage("PIN設定を削除しました。", false);
+    });
   }
 
   function onClickReceiverPinList(event) {
@@ -478,10 +489,15 @@
     const ok = window.confirm(`「${receiverName}」のPIN設定を削除しますか？`);
     if (!ok) return;
 
-    delete receiverPins[receiverName];
-    saveReceiverPinsToStorage();
-    renderReceiverPinManagement();
-    showMessage("PIN設定を削除しました。", false);
+    requestPinVerification(receiverName, "PIN削除").then((verified) => {
+      if (!verified) return;
+      delete receiverPins[receiverName];
+      saveReceiverPinsToStorage();
+      delete receiverPinLocks[receiverName];
+      saveReceiverPinLocksToStorage();
+      renderReceiverPinManagement();
+      showMessage("PIN設定を削除しました。", false);
+    });
   }
 
   function onDeleteAll() {
@@ -505,6 +521,9 @@
     }
 
     if (!receiverPins[target.receiver]) {
+      receiverPinTargetValue = target.receiver;
+      receiverPinTargetSelect.value = target.receiver;
+      syncReceiverPinFormState();
       showMessage("この受取人にはPINが設定されていません。先に設定してください。", true);
       return;
     }
@@ -865,12 +884,29 @@
     }
   }
 
+  function loadReceiverPinLocksFromStorage() {
+    try {
+      const raw = window.localStorage.getItem(RECEIVER_PIN_LOCKS_STORAGE_KEY);
+      if (!raw) {
+        receiverPinLocks = {};
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      // PINロック情報はバックアップ対象に含めない方針（復元時に持ち込まない）。
+      receiverPinLocks = normalizeReceiverPinLocks(parsed);
+    } catch (error) {
+      receiverPinLocks = {};
+      showMessage("受取人PINロック情報の読み込みで問題が発生したため、初期化しました。", true);
+    }
+  }
+
   function persistAndRender() {
     saveRecordsToStorage();
     savePeopleToStorage();
     saveMemoTemplatesToStorage();
     saveReceiverColorsToStorage();
     saveReceiverPinsToStorage();
+    saveReceiverPinLocksToStorage();
     renderAll();
   }
 
@@ -892,6 +928,10 @@
 
   function saveReceiverPinsToStorage() {
     window.localStorage.setItem(RECEIVER_PINS_STORAGE_KEY, JSON.stringify(receiverPins));
+  }
+
+  function saveReceiverPinLocksToStorage() {
+    window.localStorage.setItem(RECEIVER_PIN_LOCKS_STORAGE_KEY, JSON.stringify(receiverPinLocks));
   }
 
   function renderAll() {
@@ -1317,39 +1357,12 @@
     }
   }
 
-  function onReceiverFilterChanged(event) {
-    receiverFilterValue = event.target.value;
-    renderReceiverRecords();
-  }
-
   function renderReceiverView() {
-    renderReceiverFilterOptions();
+    const summaryMap = buildReceiverSummaryMap();
+    if (expandedReceiverName && !summaryMap.has(expandedReceiverName)) {
+      expandedReceiverName = "";
+    }
     renderReceiverSummary();
-    renderReceiverRecords();
-  }
-
-  function renderReceiverFilterOptions() {
-    const receiverNames = getSortedReceiverNames();
-    const previousValue = receiverFilterValue;
-
-    receiverFilterSelect.innerHTML = "";
-
-    const allOption = document.createElement("option");
-    allOption.value = "ALL";
-    allOption.textContent = `全員（${records.length}件）`;
-    receiverFilterSelect.appendChild(allOption);
-
-    receiverNames.forEach((name) => {
-      const receiverRecords = records.filter((item) => item.receiver === name);
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = `${name}（${receiverRecords.length}件）`;
-      receiverFilterSelect.appendChild(option);
-    });
-
-    const stillExists = previousValue === "ALL" || receiverNames.includes(previousValue);
-    receiverFilterValue = stillExists ? previousValue : "ALL";
-    receiverFilterSelect.value = receiverFilterValue;
   }
 
   function renderReceiverSummary() {
@@ -1371,6 +1384,19 @@
       const card = document.createElement("article");
       card.className = "receiver-summary-card";
       applyReceiverColorTheme(card, name);
+      if (expandedReceiverName === name) {
+        card.classList.add("is-expanded");
+      }
+
+      const triggerBtn = document.createElement("button");
+      triggerBtn.type = "button";
+      triggerBtn.className = "receiver-summary-trigger";
+      triggerBtn.setAttribute("aria-expanded", expandedReceiverName === name ? "true" : "false");
+      triggerBtn.setAttribute("aria-label", `${name} の記録を${expandedReceiverName === name ? "閉じる" : "開く"}`);
+      triggerBtn.addEventListener("click", () => {
+        expandedReceiverName = expandedReceiverName === name ? "" : name;
+        renderReceiverSummary();
+      });
 
       const top = document.createElement("div");
       top.className = "receiver-summary-top";
@@ -1389,73 +1415,78 @@
       metaEl.className = "receiver-meta";
       metaEl.textContent = `件数: ${summary.totalCount}件 / 未確認: ${summary.unreceivedCount}件 / 受取確定: ${summary.receivedCount}件`;
 
-      card.appendChild(top);
-      card.appendChild(metaEl);
+      triggerBtn.appendChild(top);
+      triggerBtn.appendChild(metaEl);
+      card.appendChild(triggerBtn);
+
+      if (expandedReceiverName === name) {
+        const detailWrap = document.createElement("div");
+        detailWrap.className = "receiver-summary-detail";
+
+        const detailRecords = records
+          .filter((item) => item.receiver === name)
+          .sort((a, b) => new Date(b.givenAt).getTime() - new Date(a.givenAt).getTime());
+
+        if (detailRecords.length === 0) {
+          const emptyEl = document.createElement("p");
+          emptyEl.className = "empty";
+          emptyEl.textContent = "記録はありません。";
+          detailWrap.appendChild(emptyEl);
+        } else {
+          const detailFragment = document.createDocumentFragment();
+          detailRecords.forEach((item) => {
+            const detailItem = document.createElement("article");
+            detailItem.className = "receiver-detail-item";
+
+            const amountEl = document.createElement("p");
+            amountEl.className = "receiver-detail-line";
+            amountEl.textContent = `金額: ${formatCurrency(item.amount)}`;
+
+            const datetimeEl = document.createElement("p");
+            datetimeEl.className = "receiver-detail-line";
+            datetimeEl.textContent = `渡した日時: ${formatDisplayDate(item.givenAt)}`;
+
+            const statusEl = document.createElement("p");
+            statusEl.className = "receiver-detail-line";
+            statusEl.textContent = `受取状態: ${item.received ? "受取確定" : "未確認"}`;
+
+            detailItem.appendChild(amountEl);
+            detailItem.appendChild(datetimeEl);
+            detailItem.appendChild(statusEl);
+
+            if (item.memo) {
+              const memoEl = document.createElement("p");
+              memoEl.className = "receiver-detail-line";
+              memoEl.textContent = `メモ: ${item.memo}`;
+              detailItem.appendChild(memoEl);
+            }
+
+            const actionsEl = document.createElement("div");
+            actionsEl.className = "receiver-detail-actions";
+
+            const confirmBtn = document.createElement("button");
+            confirmBtn.type = "button";
+            confirmBtn.className = "btn";
+            confirmBtn.textContent = item.received ? "受取確定済み" : "受け取りました";
+            confirmBtn.disabled = item.received;
+            confirmBtn.addEventListener("click", () => {
+              onConfirmReceived(item.id);
+            });
+
+            actionsEl.appendChild(confirmBtn);
+            detailItem.appendChild(actionsEl);
+
+            detailFragment.appendChild(detailItem);
+          });
+          detailWrap.appendChild(detailFragment);
+        }
+
+        card.appendChild(detailWrap);
+      }
       fragment.appendChild(card);
     });
 
     receiverSummaryEl.appendChild(fragment);
-  }
-
-  function renderReceiverRecords() {
-    receiverRecordsContainer.innerHTML = "";
-
-    const targetRecords = receiverFilterValue === "ALL"
-      ? records
-      : records.filter((item) => item.receiver === receiverFilterValue);
-
-    if (targetRecords.length === 0) {
-      const emptyEl = document.createElement("p");
-      emptyEl.className = "empty";
-      emptyEl.textContent = "該当する記録はありません。";
-      receiverRecordsContainer.appendChild(emptyEl);
-      return;
-    }
-
-    const fragment = document.createDocumentFragment();
-
-    targetRecords.forEach((item) => {
-      const card = document.createElement("article");
-      card.className = "record-card";
-      applyReceiverColorTheme(card, item.receiver);
-
-      const top = document.createElement("div");
-      top.className = "top-row";
-
-      const amountEl = document.createElement("strong");
-      amountEl.className = "amount";
-      amountEl.textContent = formatCurrency(item.amount);
-
-      const statusBadgeEl = document.createElement("span");
-      statusBadgeEl.className = "status-badge";
-      statusBadgeEl.textContent = item.received ? "受取確定" : "未確認";
-      statusBadgeEl.classList.add(item.received ? "status-done" : "status-pending");
-
-      top.appendChild(amountEl);
-      top.appendChild(statusBadgeEl);
-
-      const peopleEl = document.createElement("p");
-      peopleEl.className = "people";
-      peopleEl.textContent = `渡した人: ${item.giver} / 受け取る人: ${item.receiver}`;
-
-      const dateEl = document.createElement("p");
-      dateEl.className = "datetime";
-      dateEl.textContent = `渡した日時: ${formatDisplayDate(item.givenAt)}`;
-
-      const receivedInfoEl = document.createElement("p");
-      receivedInfoEl.className = "received-info";
-      receivedInfoEl.textContent = item.received
-        ? `受取者確認済み: ${formatDisplayDate(item.receivedAt)}`
-        : "受取者確認待ち";
-
-      card.appendChild(top);
-      card.appendChild(peopleEl);
-      card.appendChild(dateEl);
-      card.appendChild(receivedInfoEl);
-      fragment.appendChild(card);
-    });
-
-    receiverRecordsContainer.appendChild(fragment);
   }
 
   function getSortedReceiverNames() {
@@ -1564,6 +1595,27 @@
     if (role === "receiver") target.canReceive = false;
 
     people = people.filter((item) => item.canGive || item.canReceive);
+
+    const stillManagedAsReceiver = people.some((item) => item.name === name && item.canReceive);
+    const stillUsedAsReceiver = records.some((item) => item.receiver === name);
+    const shouldRemoveReceiverSecurityData = !stillManagedAsReceiver && !stillUsedAsReceiver;
+
+    if (!shouldRemoveReceiverSecurityData) return;
+
+    let pinsChanged = false;
+    let locksChanged = false;
+
+    if (Object.prototype.hasOwnProperty.call(receiverPins, name)) {
+      delete receiverPins[name];
+      pinsChanged = true;
+    }
+    if (Object.prototype.hasOwnProperty.call(receiverPinLocks, name)) {
+      delete receiverPinLocks[name];
+      locksChanged = true;
+    }
+
+    if (pinsChanged) saveReceiverPinsToStorage();
+    if (locksChanged) saveReceiverPinLocksToStorage();
   }
 
   function derivePeopleFromRecords(sourceRecords) {
@@ -1724,10 +1776,29 @@
       memoEl.className = "memo";
       memoEl.textContent = item.memo ? `メモ: ${item.memo}` : "メモ: なし";
 
+      const receivedInfoEl = document.createElement("p");
+      receivedInfoEl.className = "received-info";
+      receivedInfoEl.textContent = item.received
+        ? `受取者確認済み: ${formatDisplayDate(item.receivedAt)}`
+        : "受取者確認待ち";
+
+      const actionsEl = document.createElement("div");
+      actionsEl.className = "actions";
+
+      const confirmBtn = document.createElement("button");
+      confirmBtn.type = "button";
+      confirmBtn.className = "btn confirm-btn";
+      confirmBtn.textContent = item.received ? "受取確定済み" : "受け取りました";
+      confirmBtn.disabled = item.received;
+      confirmBtn.addEventListener("click", () => onConfirmReceived(item.id));
+      actionsEl.appendChild(confirmBtn);
+
       card.appendChild(top);
       card.appendChild(peopleEl);
       card.appendChild(timeEl);
       card.appendChild(memoEl);
+      card.appendChild(receivedInfoEl);
+      card.appendChild(actionsEl);
       fragment.appendChild(card);
     });
 
@@ -1874,21 +1945,35 @@
     return hash === entry.hash;
   }
 
-  async function requestPinVerification(receiverName) {
+  async function requestPinVerification(receiverName, purposeLabel) {
+    if (isReceiverPinLocked(receiverName)) {
+      showMessage("一定回数失敗したため一時的にロック中です。時間をおいて再試行してください。", true);
+      return false;
+    }
     if (!(pinAuthDialog instanceof HTMLDialogElement)) {
-      const entered = window.prompt(`${receiverName} のPIN（4桁）を入力してください。`);
+      const entered = window.prompt(buildPinPromptText(receiverName, purposeLabel));
       if (entered === null) return false;
       const pin = toSafeString(entered);
       if (!isValidPin(pin)) {
+        recordPinFailure(receiverName);
         showMessage("PINは4桁の数字で入力してください。", true);
         return false;
       }
       const valid = await verifyReceiverPin(receiverName, pin);
-      if (!valid) showMessage("PINが一致しないため受取確定できません。", true);
-      return valid;
+      if (!valid) {
+        const locked = recordPinFailure(receiverName);
+        if (locked) {
+          showMessage("一定回数失敗したため一時的にロック中です。時間をおいて再試行してください。", true);
+        } else {
+          showMessage("PINが一致しないため処理できません。", true);
+        }
+        return false;
+      }
+      recordPinSuccess(receiverName);
+      return true;
     }
 
-    pinAuthReceiverText.textContent = `受取人: ${receiverName}`;
+    pinAuthReceiverText.textContent = buildPinDialogLabel(receiverName, purposeLabel);
     pinAuthInput.value = "";
     pinAuthError.textContent = "";
     pinAuthError.hidden = true;
@@ -1906,16 +1991,23 @@
 
     const pin = toSafeString(pinAuthInput.value);
     if (!isValidPin(pin)) {
+      recordPinFailure(pinAuthContext.receiverName);
       showPinAuthError("PINは4桁の数字で入力してください。");
       return;
     }
 
     const valid = await verifyReceiverPin(pinAuthContext.receiverName, pin);
     if (!valid) {
-      showPinAuthError("PINが一致しません。受取確定できません。");
+      const locked = recordPinFailure(pinAuthContext.receiverName);
+      if (locked) {
+        showPinAuthError("一定回数失敗したため一時的にロック中です。時間をおいて再試行してください。");
+      } else {
+        showPinAuthError("PINが一致しません。処理できません。");
+      }
       return;
     }
 
+    recordPinSuccess(pinAuthContext.receiverName);
     const { resolve } = pinAuthContext;
     pinAuthContext = null;
     pinAuthDialog.close("verified");
@@ -1941,6 +2033,60 @@
   function showPinAuthError(text) {
     pinAuthError.hidden = false;
     pinAuthError.textContent = text;
+  }
+
+  function normalizeReceiverPinLocks(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+    /** @type {Record<string, {failCount:number,lockUntil:string|null}>} */
+    const normalized = {};
+    Object.entries(raw).forEach(([name, entry]) => {
+      const safeName = toSafeString(name);
+      if (!safeName || !entry || typeof entry !== "object") return;
+      const lockUntil = entry.lockUntil ? toSafeString(entry.lockUntil) : null;
+      normalized[safeName] = { failCount: 0, lockUntil: lockUntil || null };
+    });
+    return normalized;
+  }
+
+  function isReceiverPinLocked(receiverName) {
+    const entry = receiverPinLocks[receiverName];
+    if (!entry || !entry.lockUntil) return false;
+    const lockTime = new Date(entry.lockUntil).getTime();
+    if (Number.isNaN(lockTime)) return false;
+    if (Date.now() >= lockTime) {
+      receiverPinLocks[receiverName] = { failCount: 0, lockUntil: null };
+      saveReceiverPinLocksToStorage();
+      return false;
+    }
+    return true;
+  }
+
+  function recordPinFailure(receiverName) {
+    const current = receiverPinLocks[receiverName] || { failCount: 0, lockUntil: null };
+    const nextFail = current.failCount + 1;
+    const shouldLock = nextFail >= 3;
+    const lockUntil = shouldLock ? new Date(Date.now() + 5 * 60 * 1000).toISOString() : null;
+    receiverPinLocks[receiverName] = {
+      failCount: shouldLock ? 0 : nextFail,
+      lockUntil
+    };
+    saveReceiverPinLocksToStorage();
+    return shouldLock;
+  }
+
+  function recordPinSuccess(receiverName) {
+    receiverPinLocks[receiverName] = { failCount: 0, lockUntil: null };
+    saveReceiverPinLocksToStorage();
+  }
+
+  function buildPinPromptText(receiverName, purposeLabel) {
+    const label = purposeLabel ? `(${purposeLabel})` : "";
+    return `${receiverName} のPIN（4桁）を入力してください ${label}`.trim();
+  }
+
+  function buildPinDialogLabel(receiverName, purposeLabel) {
+    const label = purposeLabel ? ` / ${purposeLabel}` : "";
+    return `受取人: ${receiverName}${label}`;
   }
 
   function showMessage(text, isError) {

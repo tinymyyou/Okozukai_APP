@@ -78,6 +78,27 @@ body {
   font-size: 1.2rem;
 }
 
+.settings-panel .panel-body[hidden] {
+  display: none;
+}
+
+.settings-panel:not(.panel-collapsed) .panel-body {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-group {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.7));
+}
+
+.settings-group h3 {
+  margin: 0 0 10px;
+  font-size: 1.04rem;
+}
+
 #listView .panel:nth-of-type(5n + 1) {
   background: linear-gradient(180deg, #ffffff, var(--soft-red));
 }
@@ -144,7 +165,7 @@ body {
 
 .view-switch .btn {
   background: #eef0e5;
-  color: var(--pal-moss);
+  color: var(--text);
   border: 1px solid var(--line-strong);
 }
 
@@ -467,7 +488,7 @@ textarea {
   background: var(--danger-press);
 }
 
-.tools .tool-grid {
+.tool-grid {
   display: grid;
   gap: 10px;
 }
@@ -516,14 +537,9 @@ textarea {
   gap: 12px;
 }
 
-.receiver-filter {
-  margin-bottom: 10px;
-}
-
 .receiver-summary {
   display: grid;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 .receiver-summary-card {
@@ -554,6 +570,44 @@ textarea {
   margin-top: 6px;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.receiver-summary-trigger {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.receiver-summary-detail {
+  margin-top: 10px;
+  border-top: 1px dashed var(--line-strong);
+  padding-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.receiver-detail-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+.receiver-detail-line {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.receiver-detail-line + .receiver-detail-line {
+  margin-top: 6px;
+}
+
+.receiver-detail-actions {
+  margin-top: 8px;
 }
 
 .calendar-header {
@@ -816,12 +870,17 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .tools .tool-grid {
+  .tool-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .receiver-summary {
+  .receiver-summary-detail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .receiver-detail-item {
+    align-self: start;
   }
 
   .actions {
