@@ -488,6 +488,15 @@ textarea {
   background: var(--danger-press);
 }
 
+.confirm-btn:disabled {
+  background: linear-gradient(135deg, #dff2e5, #cfe9d8);
+  color: var(--done-text);
+  border: 1px solid #8fc3a1;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .tool-grid {
   display: grid;
   gap: 10px;
