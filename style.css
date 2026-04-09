@@ -525,6 +525,10 @@ textarea {
   font-weight: 700;
 }
 
+.message:empty {
+  display: none;
+}
+
 .message.is-success {
   color: #1e6f52;
   border-color: #9ad4bc;
