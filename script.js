@@ -5,7 +5,8 @@
   const PEOPLE_STORAGE_KEY = "allowancePeopleV1";
   const MEMO_TEMPLATES_STORAGE_KEY = "allowanceMemoTemplatesV1";
   const RECEIVER_COLORS_STORAGE_KEY = "allowanceReceiverColorsV1";
-  const APP_EXPORT_VERSION = 1;
+  const RECEIVER_PINS_STORAGE_KEY = "allowanceReceiverPinsV1";
+  const APP_EXPORT_VERSION = 2;
   const RECEIVER_COLOR_PALETTE = [
     { accent: "#E53935", soft: "#FDECEA" },
     { accent: "#1E88E5", soft: "#EAF3FD" },
@@ -29,6 +30,8 @@
   let memoTemplates = [];
   /** @type {Record<string, string>} */
   let receiverColors = {};
+  /** @type {Record<string, {salt:string,hash:string,updatedAt:string}>} */
+  let receiverPins = {};
 
   const form = document.getElementById("recordForm");
   const giverInput = document.getElementById("giver");
@@ -60,6 +63,17 @@
   const receiverColorPicker = document.getElementById("receiverColorPicker");
   const resetReceiverColorBtn = document.getElementById("resetReceiverColorBtn");
   const receiverColorList = document.getElementById("receiverColorList");
+  const receiverPinForm = document.getElementById("receiverPinForm");
+  const receiverPinTargetSelect = document.getElementById("receiverPinTarget");
+  const receiverPinInput = document.getElementById("receiverPinInput");
+  const deleteReceiverPinBtn = document.getElementById("deleteReceiverPinBtn");
+  const receiverPinList = document.getElementById("receiverPinList");
+  const pinAuthDialog = document.getElementById("pinAuthDialog");
+  const pinAuthForm = document.getElementById("pinAuthForm");
+  const pinAuthReceiverText = document.getElementById("pinAuthReceiverText");
+  const pinAuthInput = document.getElementById("pinAuthInput");
+  const pinAuthError = document.getElementById("pinAuthError");
+  const pinAuthCancelBtn = document.getElementById("pinAuthCancelBtn");
 
   const recordsContainer = document.getElementById("recordsContainer");
   const cardTemplate = document.getElementById("recordCardTemplate");
@@ -89,6 +103,10 @@
   let monthlyTargetMonthKey = toMonthKey(new Date());
   let monthlyReceiverFilterValue = "ALL";
   let receiverColorTargetValue = "";
+  let receiverPinTargetValue = "";
+  let recentAddedRecordId = "";
+  /** @type {{receiverName:string,resolve:(value:boolean)=>void} | null} */
+  let pinAuthContext = null;
 
   init();
 
@@ -101,6 +119,7 @@
     loadPeopleFromStorage();
     loadMemoTemplatesFromStorage();
     loadReceiverColorsFromStorage();
+    loadReceiverPinsFromStorage();
     if (people.length === 0 && records.length > 0) {
       people = derivePeopleFromRecords(records);
       savePeopleToStorage();
@@ -129,6 +148,13 @@
     receiverColorTargetSelect.addEventListener("change", onReceiverColorTargetChanged);
     resetReceiverColorBtn.addEventListener("click", onResetReceiverColor);
     receiverColorList.addEventListener("click", onClickReceiverColorList);
+    receiverPinForm.addEventListener("submit", onSubmitReceiverPin);
+    receiverPinTargetSelect.addEventListener("change", onReceiverPinTargetChanged);
+    deleteReceiverPinBtn.addEventListener("click", onDeleteReceiverPin);
+    receiverPinList.addEventListener("click", onClickReceiverPinList);
+    pinAuthForm.addEventListener("submit", onSubmitPinAuth);
+    pinAuthCancelBtn.addEventListener("click", onCancelPinAuth);
+    pinAuthDialog.addEventListener("cancel", onPinAuthDialogCancel);
     showListViewBtn.addEventListener("click", () => switchView("list"));
     showCalendarViewBtn.addEventListener("click", () => switchView("calendar"));
     prevMonthBtn.addEventListener("click", () => moveCalendarMonth(-1));
@@ -204,6 +230,22 @@
       return;
     }
 
+    const previewGivenAt = givenAtDate.toISOString();
+    const confirmationText = [
+      "以上の内容で登録します。よろしいですか？",
+      "",
+      `渡した人: ${giver}`,
+      `受け取る人: ${receiver}`,
+      `金額: ${formatCurrency(amount)}`,
+      `日時: ${formatDisplayDate(previewGivenAt)}`,
+      `メモ: ${memo || "なし"}`
+    ].join("\n");
+    const ok = window.confirm(confirmationText);
+    if (!ok) {
+      showMessage("登録をキャンセルしました。入力内容は保持されています。", true);
+      return;
+    }
+
     const nowIso = new Date().toISOString();
     const newRecord = {
       id: createId(),
@@ -218,13 +260,14 @@
       locked: false
     };
 
+    recentAddedRecordId = newRecord.id;
     records.unshift(newRecord);
     persistAndRender();
+    showMessage("記録を登録しました。一覧の先頭に追加されています。", false);
 
     form.reset();
     givenAtInput.value = toDatetimeLocalValue(new Date());
     giverInput.focus();
-    showMessage("記録を追加しました。", false);
   }
 
   function onSubmitPerson(event) {
@@ -380,6 +423,67 @@
     showMessage("自動色に戻しました。", false);
   }
 
+  function onReceiverPinTargetChanged(event) {
+    receiverPinTargetValue = event.target.value;
+    syncReceiverPinFormState();
+  }
+
+  async function onSubmitReceiverPin(event) {
+    event.preventDefault();
+    if (!receiverPinTargetValue) {
+      showMessage("受取人を選択してください。", true);
+      return;
+    }
+
+    const pin = toSafeString(receiverPinInput.value);
+    if (!isValidPin(pin)) {
+      showMessage("PINは4桁の数字で入力してください。", true);
+      return;
+    }
+
+    receiverPins[receiverPinTargetValue] = await createReceiverPinEntry(pin);
+    saveReceiverPinsToStorage();
+    renderReceiverPinManagement();
+    receiverPinInput.value = "";
+    showMessage("PINを保存しました。", false);
+  }
+
+  function onDeleteReceiverPin() {
+    if (!receiverPinTargetValue) {
+      showMessage("受取人を選択してください。", true);
+      return;
+    }
+    if (!receiverPins[receiverPinTargetValue]) {
+      showMessage("この受取人にはPINが設定されていません。", true);
+      return;
+    }
+
+    const ok = window.confirm(`「${receiverPinTargetValue}」のPIN設定を削除しますか？`);
+    if (!ok) return;
+
+    delete receiverPins[receiverPinTargetValue];
+    saveReceiverPinsToStorage();
+    renderReceiverPinManagement();
+    showMessage("PIN設定を削除しました。", false);
+  }
+
+  function onClickReceiverPinList(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.matches("button[data-receiver-pin-delete]")) return;
+
+    const receiverName = target.dataset.receiverPinDelete || "";
+    if (!receiverName || !receiverPins[receiverName]) return;
+
+    const ok = window.confirm(`「${receiverName}」のPIN設定を削除しますか？`);
+    if (!ok) return;
+
+    delete receiverPins[receiverName];
+    saveReceiverPinsToStorage();
+    renderReceiverPinManagement();
+    showMessage("PIN設定を削除しました。", false);
+  }
+
   function onDeleteAll() {
     if (records.length === 0) {
       showMessage("削除する記録がありません。", true);
@@ -394,14 +498,19 @@
     showMessage("全件削除しました。", false);
   }
 
-  function onConfirmReceived(recordId) {
+  async function onConfirmReceived(recordId) {
     const target = records.find((item) => item.id === recordId);
     if (!target || target.locked || target.received) {
       return;
     }
 
-    const ok = window.confirm("受け取り確認を確定します。確定後は未確認に戻せません。よろしいですか？");
-    if (!ok) return;
+    if (!receiverPins[target.receiver]) {
+      showMessage("この受取人にはPINが設定されていません。先に設定してください。", true);
+      return;
+    }
+
+    const verified = await requestPinVerification(target.receiver);
+    if (!verified) return;
 
     target.received = true;
     target.locked = true;
@@ -432,7 +541,8 @@
         records,
         people,
         memoTemplates,
-        receiverColors
+        receiverColors,
+        receiverPins
       };
       const jsonText = JSON.stringify(payload, null, 2);
       const fileName = `allowance-backup-${formatStampForFileName(new Date())}.json`;
@@ -497,6 +607,7 @@
         const restoredPeople = extractAndValidatePeople(parsed, restoredRecords);
         const restoredMemoTemplates = extractAndValidateMemoTemplates(parsed);
         const restoredReceiverColors = extractAndValidateReceiverColors(parsed);
+        const restoredReceiverPins = extractAndValidateReceiverPins(parsed);
 
         const ok = window.confirm(`バックアップから${restoredRecords.length}件を復元します。現在のデータは上書きされます。よろしいですか？`);
         if (!ok) {
@@ -508,6 +619,7 @@
         people = restoredPeople;
         memoTemplates = restoredMemoTemplates;
         receiverColors = restoredReceiverColors;
+        receiverPins = restoredReceiverPins;
         persistAndRender();
         showMessage("復元が完了しました。", false);
       } catch (error) {
@@ -566,6 +678,26 @@
       const safeColor = normalizeHexColor(color);
       if (!safeName || !safeColor) return;
       normalized[safeName] = safeColor;
+    });
+    return normalized;
+  }
+
+  function extractAndValidateReceiverPins(payload) {
+    const raw = payload && payload.receiverPins;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return {};
+    }
+
+    /** @type {Record<string, {salt:string,hash:string,updatedAt:string}>} */
+    const normalized = {};
+    Object.entries(raw).forEach(([name, entry]) => {
+      const safeName = toSafeString(name);
+      if (!safeName) return;
+      try {
+        normalized[safeName] = validateAndNormalizeReceiverPinEntry(entry);
+      } catch (error) {
+        // 不正なPIN設定エントリはスキップ
+      }
     });
     return normalized;
   }
@@ -631,6 +763,19 @@
       throw new Error("Memo template is required");
     }
     return text.slice(0, 240);
+  }
+
+  function validateAndNormalizeReceiverPinEntry(raw) {
+    if (!raw || typeof raw !== "object") {
+      throw new Error("PIN entry is not object");
+    }
+    const salt = toSafeString(raw.salt);
+    const hash = toSafeString(raw.hash);
+    const updatedAt = raw.updatedAt ? normalizeIsoDate(raw.updatedAt) : new Date().toISOString();
+    if (!salt || !hash) {
+      throw new Error("PIN entry is invalid");
+    }
+    return { salt, hash, updatedAt };
   }
 
   function loadRecordsFromStorage() {
@@ -705,11 +850,27 @@
     }
   }
 
+  function loadReceiverPinsFromStorage() {
+    try {
+      const raw = window.localStorage.getItem(RECEIVER_PINS_STORAGE_KEY);
+      if (!raw) {
+        receiverPins = {};
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      receiverPins = extractAndValidateReceiverPins({ receiverPins: parsed });
+    } catch (error) {
+      receiverPins = {};
+      showMessage("受取人PIN設定の読み込みで問題が発生したため、初期化しました。", true);
+    }
+  }
+
   function persistAndRender() {
     saveRecordsToStorage();
     savePeopleToStorage();
     saveMemoTemplatesToStorage();
     saveReceiverColorsToStorage();
+    saveReceiverPinsToStorage();
     renderAll();
   }
 
@@ -729,11 +890,16 @@
     window.localStorage.setItem(RECEIVER_COLORS_STORAGE_KEY, JSON.stringify(receiverColors));
   }
 
+  function saveReceiverPinsToStorage() {
+    window.localStorage.setItem(RECEIVER_PINS_STORAGE_KEY, JSON.stringify(receiverPins));
+  }
+
   function renderAll() {
     renderStats();
     renderMonthlyReceiverFilterOptions();
     renderMonthlySummary();
     renderReceiverColorManagement();
+    renderReceiverPinManagement();
     renderRecords();
     renderPeopleManagement();
     renderMemoTemplateManagement();
@@ -756,6 +922,13 @@
     renderReceiverColorTargetOptions(receiverNames);
     renderReceiverColorList(receiverNames);
     syncReceiverColorPicker();
+  }
+
+  function renderReceiverPinManagement() {
+    const receiverNames = getManagedReceiverNames();
+    renderReceiverPinTargetOptions(receiverNames);
+    renderReceiverPinList(receiverNames);
+    syncReceiverPinFormState();
   }
 
   function renderReceiverColorTargetOptions(receiverNames) {
@@ -838,6 +1011,76 @@
     }
     receiverColorPicker.value = getReceiverColor(receiverColorTargetValue).accent;
     resetReceiverColorBtn.disabled = !Boolean(receiverColors[receiverColorTargetValue]);
+  }
+
+  function renderReceiverPinTargetOptions(receiverNames) {
+    const previous = receiverPinTargetValue;
+    receiverPinTargetSelect.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = receiverNames.length > 0 ? "受取人を選択" : "受取人がいません";
+    receiverPinTargetSelect.appendChild(placeholder);
+
+    receiverNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      receiverPinTargetSelect.appendChild(option);
+    });
+
+    receiverPinTargetValue = receiverNames.includes(previous) ? previous : (receiverNames[0] || "");
+    receiverPinTargetSelect.value = receiverPinTargetValue;
+  }
+
+  function renderReceiverPinList(receiverNames) {
+    receiverPinList.innerHTML = "";
+    if (receiverNames.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "empty";
+      emptyEl.textContent = "受取人がいません。";
+      receiverPinList.appendChild(emptyEl);
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    receiverNames.forEach((name) => {
+      const item = document.createElement("div");
+      item.className = "receiver-pin-item";
+
+      const main = document.createElement("div");
+      main.className = "receiver-pin-main";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "receiver-pin-name";
+      nameEl.textContent = name;
+
+      const modeEl = document.createElement("span");
+      modeEl.className = "receiver-pin-mode";
+      modeEl.textContent = receiverPins[name] ? "PIN設定済み" : "PIN未設定";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn danger";
+      btn.textContent = "PIN削除";
+      btn.dataset.receiverPinDelete = name;
+      btn.disabled = !receiverPins[name];
+
+      main.appendChild(nameEl);
+      main.appendChild(modeEl);
+      item.appendChild(main);
+      item.appendChild(btn);
+      fragment.appendChild(item);
+    });
+
+    receiverPinList.appendChild(fragment);
+  }
+
+  function syncReceiverPinFormState() {
+    const hasTarget = Boolean(receiverPinTargetValue);
+    receiverPinTargetSelect.disabled = receiverPinTargetSelect.options.length <= 1;
+    receiverPinInput.disabled = !hasTarget;
+    deleteReceiverPinBtn.disabled = !hasTarget || !Boolean(receiverPins[receiverPinTargetValue]);
   }
 
   function renderMemoTemplateSelect() {
@@ -1025,6 +1268,7 @@
 
     records.forEach((item) => {
       const node = cardTemplate.content.firstElementChild.cloneNode(true);
+      node.dataset.recordId = item.id;
       const amountEl = node.querySelector(".amount");
       const statusBadgeEl = node.querySelector(".status-badge");
       const peopleEl = node.querySelector(".people");
@@ -1060,6 +1304,17 @@
     });
 
     recordsContainer.appendChild(fragment);
+
+    if (recentAddedRecordId) {
+      const addedCard = recordsContainer.querySelector(`[data-record-id="${recentAddedRecordId}"]`);
+      if (addedCard) {
+        addedCard.classList.add("new-record-flash");
+        window.setTimeout(() => {
+          addedCard.classList.remove("new-record-flash");
+        }, 1800);
+      }
+      recentAddedRecordId = "";
+    }
   }
 
   function onReceiverFilterChanged(event) {
@@ -1205,6 +1460,14 @@
 
   function getSortedReceiverNames() {
     const names = new Set(records.map((item) => item.receiver));
+    return [...names].sort((a, b) => a.localeCompare(b, "ja"));
+  }
+
+  function getManagedReceiverNames() {
+    const names = new Set(getSortedReceiverNames());
+    people.forEach((item) => {
+      if (item.canReceive) names.add(item.name);
+    });
     return [...names].sort((a, b) => a.localeCompare(b, "ja"));
   }
 
@@ -1569,9 +1832,123 @@
     return `"${escaped}"`;
   }
 
+  function isValidPin(pin) {
+    return /^\d{4}$/.test(pin);
+  }
+
+  function createPinSalt() {
+    const arr = new Uint8Array(16);
+    if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+      window.crypto.getRandomValues(arr);
+      return [...arr].map((v) => v.toString(16).padStart(2, "0")).join("");
+    }
+    return `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 18)}`;
+  }
+
+  async function createReceiverPinEntry(pin) {
+    const salt = createPinSalt();
+    const hash = await hashPin(pin, salt);
+    return {
+      salt,
+      hash,
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  // フロントエンドのみのため完全な秘匿にはならないが、平文保存は避けてハッシュ化して保持する。
+  async function hashPin(pin, salt) {
+    const payload = `${salt}:${pin}`;
+    if (window.crypto && window.crypto.subtle && typeof TextEncoder !== "undefined") {
+      const encoded = new TextEncoder().encode(payload);
+      const digest = await window.crypto.subtle.digest("SHA-256", encoded);
+      return [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, "0")).join("");
+    }
+    return `fallback-${Math.abs(hashString(payload))}`;
+  }
+
+  async function verifyReceiverPin(receiverName, pin) {
+    if (!isValidPin(pin)) return false;
+    const entry = receiverPins[receiverName];
+    if (!entry) return false;
+    const hash = await hashPin(pin, entry.salt);
+    return hash === entry.hash;
+  }
+
+  async function requestPinVerification(receiverName) {
+    if (!(pinAuthDialog instanceof HTMLDialogElement)) {
+      const entered = window.prompt(`${receiverName} のPIN（4桁）を入力してください。`);
+      if (entered === null) return false;
+      const pin = toSafeString(entered);
+      if (!isValidPin(pin)) {
+        showMessage("PINは4桁の数字で入力してください。", true);
+        return false;
+      }
+      const valid = await verifyReceiverPin(receiverName, pin);
+      if (!valid) showMessage("PINが一致しないため受取確定できません。", true);
+      return valid;
+    }
+
+    pinAuthReceiverText.textContent = `受取人: ${receiverName}`;
+    pinAuthInput.value = "";
+    pinAuthError.textContent = "";
+    pinAuthError.hidden = true;
+    pinAuthDialog.showModal();
+
+    return new Promise((resolve) => {
+      pinAuthContext = { receiverName, resolve };
+      pinAuthInput.focus();
+    });
+  }
+
+  async function onSubmitPinAuth(event) {
+    event.preventDefault();
+    if (!pinAuthContext) return;
+
+    const pin = toSafeString(pinAuthInput.value);
+    if (!isValidPin(pin)) {
+      showPinAuthError("PINは4桁の数字で入力してください。");
+      return;
+    }
+
+    const valid = await verifyReceiverPin(pinAuthContext.receiverName, pin);
+    if (!valid) {
+      showPinAuthError("PINが一致しません。受取確定できません。");
+      return;
+    }
+
+    const { resolve } = pinAuthContext;
+    pinAuthContext = null;
+    pinAuthDialog.close("verified");
+    resolve(true);
+  }
+
+  function onCancelPinAuth() {
+    if (!pinAuthContext) {
+      if (pinAuthDialog.open) pinAuthDialog.close("cancel");
+      return;
+    }
+    const { resolve } = pinAuthContext;
+    pinAuthContext = null;
+    if (pinAuthDialog.open) pinAuthDialog.close("cancel");
+    resolve(false);
+  }
+
+  function onPinAuthDialogCancel(event) {
+    event.preventDefault();
+    onCancelPinAuth();
+  }
+
+  function showPinAuthError(text) {
+    pinAuthError.hidden = false;
+    pinAuthError.textContent = text;
+  }
+
   function showMessage(text, isError) {
     messageArea.textContent = text;
-    messageArea.style.color = isError ? "#d97582" : "#3f7f93";
+    messageArea.classList.remove("is-error", "is-success", "is-pop");
+    // 再アニメーションのために一度reflowを挟む
+    void messageArea.offsetWidth;
+    messageArea.classList.add(isError ? "is-error" : "is-success", "is-pop");
   }
 })();
 

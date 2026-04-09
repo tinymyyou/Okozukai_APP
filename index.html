@@ -137,6 +137,26 @@
         <div id="receiverColorList" class="receiver-color-list"></div>
       </section>
 
+      <section class="panel" aria-label="受取人ごとのPIN設定">
+        <h2>受取人ごとのPIN設定</h2>
+        <form id="receiverPinForm" class="receiver-pin-form" novalidate>
+          <label>
+            受取人
+            <select id="receiverPinTarget"></select>
+          </label>
+          <label>
+            PIN（4桁）
+            <input id="receiverPinInput" type="password" maxlength="4" inputmode="numeric" pattern="\d{4}" placeholder="4桁の数字">
+          </label>
+          <div class="receiver-pin-actions">
+            <button type="submit" class="btn">PINを保存/変更</button>
+            <button id="deleteReceiverPinBtn" type="button" class="btn danger">PINを削除</button>
+          </div>
+        </form>
+        <p class="pin-note">※PINは端末の localStorage に保存されます。</p>
+        <div id="receiverPinList" class="receiver-pin-list"></div>
+      </section>
+
       <section class="panel" aria-label="人の登録">
         <h2>渡す人・受け取る人の登録</h2>
         <form id="personForm" class="person-form" novalidate>
@@ -217,6 +237,22 @@
       </div>
     </article>
   </template>
+
+  <dialog id="pinAuthDialog" class="pin-auth-dialog">
+    <form id="pinAuthForm" class="pin-auth-form" method="dialog" novalidate>
+      <h2>受け取り確認の本人認証</h2>
+      <p id="pinAuthReceiverText" class="pin-auth-receiver"></p>
+      <label>
+        PIN（4桁）
+        <input id="pinAuthInput" type="password" maxlength="4" inputmode="numeric" pattern="\d{4}" autocomplete="off" required>
+      </label>
+      <p id="pinAuthError" class="pin-auth-error" aria-live="polite"></p>
+      <div class="pin-auth-actions">
+        <button id="pinAuthCancelBtn" type="button" class="btn">キャンセル</button>
+        <button id="pinAuthSubmitBtn" type="submit" class="btn primary">認証して確定</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="script.js"></script>
 </body>
