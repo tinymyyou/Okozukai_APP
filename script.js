@@ -45,6 +45,9 @@
   const givenAtInput = document.getElementById("givenAt");
   const memoInput = document.getElementById("memo");
   const memoTemplateSelect = document.getElementById("memoTemplateSelect");
+  const recordFormModeBadge = document.getElementById("recordFormModeBadge");
+  const submitRecordBtn = document.getElementById("submitRecordBtn");
+  const cancelEditBtn = document.getElementById("cancelEditBtn");
   const personForm = document.getElementById("personForm");
   const personNameInput = document.getElementById("personName");
   const personRoleSelect = document.getElementById("personRole");
@@ -106,6 +109,7 @@
   let receiverColorTargetValue = "";
   let receiverPinTargetValue = "";
   let recentAddedRecordId = "";
+  let editingRecordId = "";
   /** @type {{receiverName:string,resolve:(value:boolean)=>void} | null} */
   let pinAuthContext = null;
 
@@ -128,6 +132,7 @@
     }
     renderAll();
     bindEvents();
+    updateRecordFormModeUI();
     switchView(currentView);
   }
 
@@ -143,6 +148,7 @@
     memoTemplateForm.addEventListener("submit", onSubmitMemoTemplate);
     memoTemplateList.addEventListener("click", onClickMemoTemplateDelete);
     memoTemplateSelect.addEventListener("change", onMemoTemplateSelected);
+    cancelEditBtn.addEventListener("click", onCancelEditRecord);
     monthlyTargetMonthInput.addEventListener("change", onMonthlyTargetMonthChanged);
     monthlyReceiverFilterSelect.addEventListener("change", onMonthlyReceiverFilterChanged);
     receiverColorForm.addEventListener("submit", onSubmitReceiverColor);
@@ -232,8 +238,9 @@
     }
 
     const previewGivenAt = givenAtDate.toISOString();
+    const isEditing = Boolean(editingRecordId);
     const confirmationText = [
-      "以上の内容で登録します。よろしいですか？",
+      isEditing ? "以上の内容で更新します。よろしいですか？" : "以上の内容で登録します。よろしいですか？",
       "",
       `渡した人: ${giver}`,
       `受け取る人: ${receiver}`,
@@ -243,7 +250,38 @@
     ].join("\n");
     const ok = window.confirm(confirmationText);
     if (!ok) {
-      showMessage("登録をキャンセルしました。入力内容は保持されています。", false);
+      showMessage(isEditing ? "更新をキャンセルしました。入力内容は保持されています。" : "登録をキャンセルしました。入力内容は保持されています。", false);
+      return;
+    }
+
+    if (isEditing) {
+      const targetIndex = records.findIndex((item) => item.id === editingRecordId);
+      if (targetIndex === -1) {
+        resetRecordFormToCreateMode({ resetForm: true, focusGiver: false });
+        showMessage("編集対象の記録が見つかりません。新規追加モードに戻しました。", true);
+        return;
+      }
+
+      const target = records[targetIndex];
+      if (!isEditableRecord(target)) {
+        resetRecordFormToCreateMode({ resetForm: true, focusGiver: false });
+        showMessage("受取確定済みの記録は編集できません。", true);
+        return;
+      }
+
+      records[targetIndex] = {
+        ...target,
+        giver,
+        receiver,
+        amount,
+        givenAt: givenAtDate.toISOString(),
+        memo
+      };
+
+      recentAddedRecordId = "";
+      persistAndRender();
+      showMessage("記録を更新しました。", false);
+      resetRecordFormToCreateMode({ resetForm: true, focusGiver: true });
       return;
     }
 
@@ -266,9 +304,79 @@
     persistAndRender();
     showMessage("記録を登録しました。一覧の先頭に追加されています。", false);
 
-    form.reset();
-    givenAtInput.value = toDatetimeLocalValue(new Date());
+    resetRecordFormToCreateMode({ resetForm: true, focusGiver: true });
+  }
+
+  function onCancelEditRecord() {
+    if (!editingRecordId) return;
+    resetRecordFormToCreateMode({ resetForm: true, focusGiver: true });
+    showMessage("編集モードを解除しました。", false);
+  }
+
+  function startEditRecord(recordId) {
+    const target = records.find((item) => item.id === recordId);
+    if (!target) {
+      showMessage("編集対象の記録が見つかりません。", true);
+      return;
+    }
+    if (!isEditableRecord(target)) {
+      showMessage("受取確定済みの記録は編集できません。", true);
+      return;
+    }
+
+    editingRecordId = target.id;
+    updateRecordFormModeUI();
+
+    giverInput.value = target.giver;
+    receiverInput.value = target.receiver;
+    amountInput.value = String(target.amount);
+    givenAtInput.value = toDatetimeLocalValue(new Date(target.givenAt));
+    memoInput.value = target.memo || "";
+    memoTemplateSelect.value = "";
+
+    switchView("list");
     giverInput.focus();
+    showMessage("編集中です。内容を修正して「記録を更新」を押してください。", false);
+  }
+
+  function resetRecordFormToCreateMode({ resetForm = true, focusGiver = false } = {}) {
+    editingRecordId = "";
+    updateRecordFormModeUI();
+
+    if (resetForm) {
+      form.reset();
+      givenAtInput.value = toDatetimeLocalValue(new Date());
+      memoTemplateSelect.value = "";
+    }
+
+    if (focusGiver) {
+      giverInput.focus();
+    }
+  }
+
+  function updateRecordFormModeUI() {
+    const isEditing = Boolean(editingRecordId);
+    submitRecordBtn.textContent = isEditing ? "記録を更新" : "記録を追加";
+    recordFormModeBadge.hidden = !isEditing;
+    cancelEditBtn.hidden = !isEditing;
+    form.classList.toggle("is-editing", isEditing);
+  }
+
+  function syncEditingState() {
+    if (!editingRecordId) {
+      updateRecordFormModeUI();
+      return;
+    }
+    const target = records.find((item) => item.id === editingRecordId);
+    if (!target || !isEditableRecord(target)) {
+      resetRecordFormToCreateMode({ resetForm: true, focusGiver: false });
+      return;
+    }
+    updateRecordFormModeUI();
+  }
+
+  function isEditableRecord(record) {
+    return !record.received && !record.locked;
   }
 
   function onSubmitPerson(event) {
@@ -510,6 +618,9 @@
     if (!ok) return;
 
     records = [];
+    if (editingRecordId) {
+      resetRecordFormToCreateMode({ resetForm: true, focusGiver: false });
+    }
     persistAndRender();
     showMessage("全件削除しました。", false);
   }
@@ -535,6 +646,9 @@
     target.locked = true;
     target.receivedAt = new Date().toISOString();
 
+    if (target.id === editingRecordId) {
+      resetRecordFormToCreateMode({ resetForm: true, focusGiver: false });
+    }
     persistAndRender();
     showMessage("受け取り確認を確定しました。", false);
   }
@@ -546,6 +660,9 @@
     const ok = window.confirm("この記録を削除します。よろしいですか？");
     if (!ok) return;
 
+    if (recordId === editingRecordId) {
+      resetRecordFormToCreateMode({ resetForm: true, focusGiver: false });
+    }
     records = records.filter((item) => item.id !== recordId);
     persistAndRender();
     showMessage("記録を削除しました。", false);
@@ -935,6 +1052,7 @@
   }
 
   function renderAll() {
+    syncEditingState();
     renderStats();
     renderMonthlyReceiverFilterOptions();
     renderMonthlySummary();
@@ -1316,6 +1434,7 @@
       const memoEl = node.querySelector(".memo");
       const receivedInfoEl = node.querySelector(".received-info");
       const confirmBtn = node.querySelector(".confirm-btn");
+      const editBtn = node.querySelector(".edit-btn");
       const deleteBtn = node.querySelector(".delete-btn");
       applyReceiverColorTheme(node, item.receiver);
 
@@ -1338,7 +1457,18 @@
       memoEl.textContent = item.memo ? `メモ: ${item.memo}` : "メモ: なし";
 
       confirmBtn.addEventListener("click", () => onConfirmReceived(item.id));
+      if (isEditableRecord(item)) {
+        editBtn.hidden = false;
+        editBtn.disabled = false;
+        editBtn.addEventListener("click", () => startEditRecord(item.id));
+      } else {
+        editBtn.hidden = true;
+        editBtn.disabled = true;
+      }
       deleteBtn.addEventListener("click", () => onDeleteOne(item.id));
+      if (item.id === editingRecordId) {
+        node.classList.add("editing-target");
+      }
 
       fragment.appendChild(node);
     });
@@ -1463,6 +1593,17 @@
 
             const actionsEl = document.createElement("div");
             actionsEl.className = "receiver-detail-actions";
+
+            if (isEditableRecord(item)) {
+              const editBtn = document.createElement("button");
+              editBtn.type = "button";
+              editBtn.className = "btn";
+              editBtn.textContent = "編集";
+              editBtn.addEventListener("click", () => {
+                startEditRecord(item.id);
+              });
+              actionsEl.appendChild(editBtn);
+            }
 
             const confirmBtn = document.createElement("button");
             confirmBtn.type = "button";

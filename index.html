@@ -53,7 +53,11 @@
             <textarea id="memo" name="memo" rows="3" maxlength="240" placeholder="任意"></textarea>
           </label>
 
-          <button type="submit" class="btn primary">記録を追加</button>
+          <p id="recordFormModeBadge" class="record-form-mode" hidden>編集中: 未確認レコードを更新します</p>
+          <div class="record-form-actions">
+            <button id="submitRecordBtn" type="submit" class="btn primary">記録を追加</button>
+            <button id="cancelEditBtn" type="button" class="btn" hidden>編集をキャンセル</button>
+          </div>
         </form>
       </section>
 
@@ -233,6 +237,7 @@
       <p class="received-info"></p>
       <div class="actions">
         <button type="button" class="btn confirm-btn">受け取りました</button>
+        <button type="button" class="btn edit-btn">編集</button>
         <button type="button" class="btn danger delete-btn">削除</button>
       </div>
     </article>

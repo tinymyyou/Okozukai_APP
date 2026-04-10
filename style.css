@@ -347,6 +347,37 @@ body {
   gap: 12px;
 }
 
+.record-form-mode {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #f2b1b0;
+  background: linear-gradient(180deg, #fff3f2, #fde8e7);
+  color: #9f3b3a;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.record-form-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.record-form.is-editing #submitRecordBtn {
+  background: linear-gradient(135deg, #6cbf84, #57a86e);
+  border: 1px solid #3e8454;
+  box-shadow: 0 8px 18px rgba(87, 168, 110, 0.35);
+}
+
+.record-form.is-editing #submitRecordBtn:hover {
+  background: linear-gradient(135deg, #73ca8c, #60b37a);
+}
+
+.record-form #cancelEditBtn {
+  background: linear-gradient(135deg, #e8ece1, #d9dece);
+  border: 1px solid var(--line-strong);
+}
+
 .person-form {
   display: grid;
   gap: 10px;
@@ -705,6 +736,10 @@ textarea {
   animation: new-record-flash 1.8s ease;
 }
 
+.record-card.editing-target {
+  box-shadow: inset 4px 0 0 #57a86e, 0 0 0 2px rgba(87, 168, 110, 0.18);
+}
+
 .top-row {
   display: flex;
   justify-content: space-between;
@@ -844,8 +879,13 @@ textarea {
   }
 
   .record-form label:nth-child(5),
-  .record-form button {
+  .record-form .record-form-mode,
+  .record-form .record-form-actions {
     grid-column: 1 / -1;
+  }
+
+  .record-form .record-form-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .person-form {
