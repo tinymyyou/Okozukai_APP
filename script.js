@@ -238,10 +238,16 @@
   function moveToListTop() {
     if (currentView !== "list") {
       switchView("list");
+      window.requestAnimationFrame(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+      });
+      return;
     }
-    const top = Math.max(0, listView.getBoundingClientRect().top + window.scrollY - 10);
     window.scrollTo({
-      top,
+      top: 0,
       behavior: "smooth"
     });
   }
