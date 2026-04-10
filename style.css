@@ -1,10 +1,10 @@
 ﻿:root {
-  --bg: #f4f2ec;
+  --bg: #f6f4ef;
   --surface: #ffffff;
   --text: #323339;
   --muted: #585b5f;
-  --line: #c5c9bb;
-  --line-strong: #aab09f;
+  --line: #d4d7cd;
+  --line-strong: #b8bdae;
   --primary: #6cbf84;
   --primary-press: #57a86e;
   --danger: #f26968;
@@ -13,18 +13,18 @@
   --pending-text: #b9474a;
   --done-bg: #dff2e5;
   --done-text: #2f6f45;
-  --shadow: 0 10px 22px rgba(50, 51, 57, 0.14);
+  --shadow: 0 8px 18px rgba(50, 51, 57, 0.1);
   --focus-ring: #f26968;
   --color-red: #f26968;
   --color-orange: #f2ad9f;
   --color-green: #6cbf84;
   --color-blue: #dfe2d2;
   --color-cyan: #323339;
-  --soft-red: #f7cfce;
-  --soft-orange: #f8d7d0;
-  --soft-green: #d8efdf;
-  --soft-blue: #f0f1e8;
-  --soft-cyan: #e9eaeb;
+  --soft-red: #fbf2f1;
+  --soft-orange: #fbf4f0;
+  --soft-green: #f2f8f3;
+  --soft-blue: #f5f7f3;
+  --soft-cyan: #f5f6f7;
   --btn-min-h: 50px;
   --btn-pad: 13px 14px;
   --label-size: 0.95rem;
@@ -40,10 +40,10 @@ body {
   margin: 0;
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
   background:
-    radial-gradient(circle at 12% 8%, #f8c6bb, transparent 34%),
-    radial-gradient(circle at 86% 18%, #ef9f92, transparent 30%),
-    radial-gradient(circle at 20% 92%, #f6b9ac, transparent 28%),
-    linear-gradient(165deg, #f9cbc1 0%, #f2ad9f 52%, #e99a8c 100%);
+    radial-gradient(circle at 12% 8%, #f7d8cf, transparent 36%),
+    radial-gradient(circle at 86% 18%, #f4cec2, transparent 32%),
+    radial-gradient(circle at 20% 92%, #f6d7cd, transparent 30%),
+    linear-gradient(165deg, #f8e9e1 0%, #f5dfd4 52%, #efd4c7 100%);
   color: var(--text);
   line-height: var(--body-line-height);
 }
@@ -65,7 +65,7 @@ body {
   font-size: 1rem;
 }
 .panel {
-  background: linear-gradient(180deg, #ffffff, #f8fcff);
+  background: linear-gradient(180deg, #ffffff, #fcfaf8);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 14px;
@@ -100,23 +100,23 @@ body {
 }
 
 #listView .panel:nth-of-type(5n + 1) {
-  background: linear-gradient(180deg, #ffffff, var(--soft-red));
+  background: linear-gradient(180deg, #ffffff, #fdf5f4);
 }
 
 #listView .panel:nth-of-type(5n + 2) {
-  background: linear-gradient(180deg, #ffffff, var(--soft-orange));
+  background: linear-gradient(180deg, #ffffff, #fdf7f3);
 }
 
 #listView .panel:nth-of-type(5n + 3) {
-  background: linear-gradient(180deg, #ffffff, var(--soft-green));
+  background: linear-gradient(180deg, #ffffff, #f5fbf6);
 }
 
 #listView .panel:nth-of-type(5n + 4) {
-  background: linear-gradient(180deg, #ffffff, var(--soft-blue));
+  background: linear-gradient(180deg, #ffffff, #f7faf6);
 }
 
 #listView .panel:nth-of-type(5n + 5) {
-  background: linear-gradient(180deg, #ffffff, var(--soft-cyan));
+  background: linear-gradient(180deg, #ffffff, #f7f9fb);
 }
 
 .panel.is-collapsible .panel-header {
@@ -134,7 +134,7 @@ body {
 .panel-toggle-btn {
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--soft-orange), var(--soft-cyan));
+  background: linear-gradient(135deg, #f8f3ee, #f3f4ec);
   color: var(--text);
   cursor: pointer;
   font-size: 0.9rem;
@@ -156,6 +156,58 @@ body {
   display: none;
 }
 
+.section-menu {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 1px solid rgba(170, 176, 159, 0.35);
+  border-radius: 12px;
+  padding: 8px;
+  background: linear-gradient(180deg, rgba(255, 251, 247, 0.92), rgba(246, 248, 242, 0.86));
+  box-shadow: 0 1px 4px rgba(50, 51, 57, 0.04);
+}
+
+.section-menu-chip {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 8px 12px;
+  min-height: 38px;
+  background: #fdf9f6;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.section-menu-chip:active {
+  transform: translateY(1px);
+}
+
+.section-backtop {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.top-back-link {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  min-height: 32px;
+  padding: 6px 12px;
+  background: #fbfcfb;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.top-back-link:active {
+  transform: translateY(1px);
+}
+
 .view-switch {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -164,25 +216,22 @@ body {
 }
 
 .view-switch .btn {
-  background: #eef0e5;
+  background: #f3eee8;
   color: var(--text);
   border: 1px solid var(--line-strong);
-}
-
-#showCalendarViewBtn {
-  background: #F26968;
-  color: #ffffff;
-  border-color: #de5a59;
-}
-
-#showCalendarViewBtn.active {
-  background: #F26968;
-  color: #ffffff;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
 }
 
 .view-switch .btn.active {
-  background: linear-gradient(135deg, #8fcfa2, #b6ddc3);
+  background: linear-gradient(135deg, #9fcead, #b8dcc2);
+  color: #1f4a34;
+  border-color: #8fbfa0;
+}
+
+#showCalendarViewBtn.active {
+  background: linear-gradient(135deg, #ef8780, #e56f69);
   color: #ffffff;
+  border-color: #cf5f5a;
 }
 
 .stats-grid {
@@ -192,7 +241,7 @@ body {
 }
 
 .stat-card {
-  background: linear-gradient(180deg, #ffffff, var(--soft-blue));
+  background: linear-gradient(180deg, #ffffff, #f8f4ef);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px;
@@ -218,7 +267,7 @@ body {
 .month-summary-result {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: linear-gradient(180deg, var(--soft-orange), var(--soft-cyan));
+  background: linear-gradient(180deg, #fbf4ee, #f6f7f1);
   padding: 13px;
 }
 
@@ -473,7 +522,7 @@ textarea {
   font-size: var(--input-size);
   font-weight: 700;
   cursor: pointer;
-  background: linear-gradient(135deg, var(--soft-orange), var(--soft-green));
+  background: linear-gradient(135deg, #f8f1eb, #f2f4eb);
   color: var(--text);
   min-height: var(--btn-min-h);
 }
@@ -483,12 +532,12 @@ textarea {
 }
 
 .btn.primary {
-  background: linear-gradient(135deg, #8fcfa2, #b6ddc3);
-  color: #ffffff;
+  background: linear-gradient(135deg, #9fcead, #b8dcc2);
+  color: #1f4a34;
 }
 
 .btn.primary:hover {
-  background: linear-gradient(135deg, #82c796, #abd8b8);
+  background: linear-gradient(135deg, #94c7a4, #add5b8);
 }
 
 .record-form .btn.primary {
@@ -589,7 +638,7 @@ textarea {
 .receiver-summary-card {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: linear-gradient(180deg, var(--soft-red), var(--soft-cyan));
+  background: linear-gradient(180deg, #fdfdfc, #f7f8f8);
   padding: 10px;
 }
 
@@ -652,6 +701,8 @@ textarea {
 
 .receiver-detail-actions {
   margin-top: 8px;
+  display: grid;
+  gap: 8px;
 }
 
 .calendar-header {

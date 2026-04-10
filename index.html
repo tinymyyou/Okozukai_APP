@@ -20,7 +20,17 @@
     <p id="messageArea" class="message" role="status" aria-live="polite"></p>
 
     <div id="listView">
-      <section class="panel" aria-label="記録追加">
+      <nav id="sectionMenu" class="section-menu" aria-label="セクション移動メニュー">
+        <button type="button" class="section-menu-chip" data-target-section="TOP">TOP</button>
+        <button type="button" class="section-menu-chip" data-target-section="recordAddSection">記録追加</button>
+        <button type="button" class="section-menu-chip" data-target-section="recordListSection">記録一覧</button>
+        <button type="button" class="section-menu-chip" data-target-section="receiverSummarySection">受取人別</button>
+        <button type="button" class="section-menu-chip" data-target-section="monthlySummarySection">月別集計</button>
+        <button type="button" class="section-menu-chip" data-target-section="statsSection">集計情報</button>
+        <button type="button" class="section-menu-chip" data-target-section="settingsSection">設定</button>
+      </nav>
+
+      <section id="recordAddSection" class="panel" aria-label="記録追加">
         <h2>記録追加</h2>
         <form id="recordForm" class="record-form" novalidate>
           <label>
@@ -61,17 +71,23 @@
         </form>
       </section>
 
-      <section class="panel" aria-label="記録一覧">
+      <section id="recordListSection" class="panel" aria-label="記録一覧">
         <h2>記録一覧</h2>
         <div id="recordsContainer" class="cards" aria-live="polite"></div>
+        <div class="section-backtop">
+          <button type="button" class="top-back-link">TOPへ戻る</button>
+        </div>
       </section>
 
-      <section class="panel" aria-label="受け取った人ごとの一覧">
+      <section id="receiverSummarySection" class="panel" aria-label="受け取った人ごとの一覧">
         <h2>受け取った人ごとの一覧</h2>
         <div id="receiverSummary" class="receiver-summary"></div>
+        <div class="section-backtop">
+          <button type="button" class="top-back-link">TOPへ戻る</button>
+        </div>
       </section>
 
-      <section class="panel month-summary-panel" aria-label="月ごとの支払合計">
+      <section id="monthlySummarySection" class="panel month-summary-panel" aria-label="月ごとの支払合計">
         <h2>月ごとの支払合計</h2>
         <label for="monthlyTargetMonth">
           対象月
@@ -87,9 +103,12 @@
           <p id="monthlyTotalAmount" class="month-summary-amount">¥0</p>
           <p id="monthlyTotalCount" class="month-summary-count">0件</p>
         </div>
+        <div class="section-backtop">
+          <button type="button" class="top-back-link">TOPへ戻る</button>
+        </div>
       </section>
 
-      <section class="panel" aria-label="集計情報">
+      <section id="statsSection" class="panel" aria-label="集計情報">
         <h2>集計情報</h2>
         <div class="stats-grid">
           <div class="stat-card">
@@ -105,9 +124,12 @@
             <span id="totalAmount" class="value">¥0</span>
           </div>
         </div>
+        <div class="section-backtop">
+          <button type="button" class="top-back-link">TOPへ戻る</button>
+        </div>
       </section>
 
-      <section class="panel settings-panel" aria-label="設定">
+      <section id="settingsSection" class="panel settings-panel" aria-label="設定">
         <h2>設定</h2>
 
         <div class="settings-group" aria-label="人の登録">
@@ -170,6 +192,9 @@
           </form>
           <div id="receiverColorList" class="receiver-color-list"></div>
         </div>
+        <div class="section-backtop">
+          <button type="button" class="top-back-link">TOPへ戻る</button>
+        </div>
 
         <div class="settings-group" aria-label="受取人ごとのPIN設定">
           <h3>受取人ごとのPIN設定</h3>
@@ -200,6 +225,9 @@
             <input id="restoreFileInput" type="file" accept="application/json,.json">
             <button id="deleteAllBtn" type="button" class="btn danger">全件削除</button>
           </div>
+        </div>
+        <div class="section-backtop">
+          <button type="button" class="top-back-link">TOPへ戻る</button>
         </div>
       </section>
     </div>

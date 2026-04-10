@@ -84,6 +84,7 @@
   const recordsContainer = document.getElementById("recordsContainer");
   const cardTemplate = document.getElementById("recordCardTemplate");
   const receiverSummaryEl = document.getElementById("receiverSummary");
+  const sectionMenu = document.getElementById("sectionMenu");
   const showListViewBtn = document.getElementById("showListViewBtn");
   const showCalendarViewBtn = document.getElementById("showCalendarViewBtn");
   const listView = document.getElementById("listView");
@@ -162,6 +163,10 @@
     pinAuthForm.addEventListener("submit", onSubmitPinAuth);
     pinAuthCancelBtn.addEventListener("click", onCancelPinAuth);
     pinAuthDialog.addEventListener("cancel", onPinAuthDialogCancel);
+    listView.addEventListener("click", onClickTopBackLink);
+    if (sectionMenu) {
+      sectionMenu.addEventListener("click", onClickSectionMenu);
+    }
     showListViewBtn.addEventListener("click", () => switchView("list"));
     showCalendarViewBtn.addEventListener("click", () => switchView("calendar"));
     prevMonthBtn.addEventListener("click", () => moveCalendarMonth(-1));
@@ -211,6 +216,66 @@
         applyPanelState(!panel.classList.contains("panel-collapsed"));
       });
     });
+  }
+
+  function onClickSectionMenu(event) {
+    const target = event.target instanceof Element
+      ? event.target.closest(".section-menu-chip")
+      : null;
+    if (!(target instanceof HTMLButtonElement) || !sectionMenu || !sectionMenu.contains(target)) return;
+
+    const sectionId = target.dataset.targetSection || "";
+    if (!sectionId) return;
+
+    if (sectionId === "TOP") {
+      moveToListTop();
+      return;
+    }
+
+    moveToSection(sectionId);
+  }
+
+  function moveToListTop() {
+    if (currentView !== "list") {
+      switchView("list");
+    }
+    const top = Math.max(0, listView.getBoundingClientRect().top + window.scrollY - 10);
+    window.scrollTo({
+      top,
+      behavior: "smooth"
+    });
+  }
+
+  function onClickTopBackLink(event) {
+    const target = event.target instanceof Element
+      ? event.target.closest(".top-back-link")
+      : null;
+    if (!(target instanceof HTMLButtonElement) || !listView.contains(target)) return;
+
+    moveToListTop();
+  }
+
+  function moveToSection(sectionId) {
+    if (currentView !== "list") {
+      switchView("list");
+    }
+    const section = document.getElementById(sectionId);
+    if (!(section instanceof HTMLElement)) return;
+
+    openCollapsedPanelIfNeeded(section);
+    const top = Math.max(0, section.getBoundingClientRect().top + window.scrollY - 10);
+    window.scrollTo({
+      top,
+      behavior: "smooth"
+    });
+  }
+
+  function openCollapsedPanelIfNeeded(section) {
+    if (!section.classList.contains("panel-collapsed")) return;
+    const toggleBtn = section.querySelector(".panel-toggle-btn");
+    if (toggleBtn instanceof HTMLButtonElement) {
+      toggleBtn.click();
+    }
   }
 
   function onSubmitRecord(event) {
@@ -314,6 +379,7 @@
   }
 
   function startEditRecord(recordId) {
+    const wasCalendar = currentView === "calendar";
     const target = records.find((item) => item.id === recordId);
     if (!target) {
       showMessage("編集対象の記録が見つかりません。", true);
@@ -335,6 +401,17 @@
     memoTemplateSelect.value = "";
 
     switchView("list");
+    const recordAddSection = document.getElementById("recordAddSection");
+    if (recordAddSection instanceof HTMLElement) {
+      openCollapsedPanelIfNeeded(recordAddSection);
+      if (wasCalendar) {
+        const top = Math.max(0, recordAddSection.getBoundingClientRect().top + window.scrollY - 10);
+        window.scrollTo({
+          top,
+          behavior: "smooth"
+        });
+      }
+    }
     giverInput.focus();
     showMessage("編集中です。内容を修正して「記録を更新」を押してください。", false);
   }
@@ -1646,6 +1723,15 @@
   function buildReceiverSummaryMap() {
     const map = new Map();
 
+    getManagedReceiverNames().forEach((name) => {
+      map.set(name, {
+        totalCount: 0,
+        unreceivedCount: 0,
+        receivedCount: 0,
+        totalAmount: 0
+      });
+    });
+
     records.forEach((item) => {
       if (!map.has(item.receiver)) {
         map.set(item.receiver, {
@@ -1933,6 +2019,15 @@
       confirmBtn.disabled = item.received;
       confirmBtn.addEventListener("click", () => onConfirmReceived(item.id));
       actionsEl.appendChild(confirmBtn);
+
+      if (isEditableRecord(item)) {
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "btn edit-btn";
+        editBtn.textContent = "編集";
+        editBtn.addEventListener("click", () => startEditRecord(item.id));
+        actionsEl.appendChild(editBtn);
+      }
 
       card.appendChild(top);
       card.appendChild(peopleEl);
