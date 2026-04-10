@@ -18,6 +18,9 @@
     </section>
 
     <p id="messageArea" class="message" role="status" aria-live="polite"></p>
+    <div id="deleteUndoArea" class="delete-undo" hidden>
+      <button id="undoDeleteBtn" type="button" class="btn">元に戻す</button>
+    </div>
 
     <div id="listView">
       <nav id="sectionMenu" class="section-menu" aria-label="セクション移動メニュー">
@@ -55,12 +58,17 @@
             <input id="givenAt" name="givenAt" type="datetime-local" required>
           </label>
 
-          <label>
+          <label class="memo-field">
             メモ
             <select id="memoTemplateSelect">
               <option value="">定型メモを選択（任意）</option>
             </select>
             <textarea id="memo" name="memo" rows="3" maxlength="240" placeholder="任意"></textarea>
+          </label>
+
+          <label class="record-keep-people">
+            <input id="keepLastPeopleCheck" type="checkbox">
+            <span>前回の人を保持する（渡した人・受け取る人）</span>
           </label>
 
           <p id="recordFormModeBadge" class="record-form-mode" hidden>編集中: 未確認レコードを更新します</p>
@@ -73,6 +81,43 @@
 
       <section id="recordListSection" class="panel" aria-label="記録一覧">
         <h2>記録一覧</h2>
+        <form id="recordFilterForm" class="record-filter" novalidate>
+          <label>
+            受取人
+            <select id="recordFilterReceiver">
+              <option value="ALL">全員</option>
+            </select>
+          </label>
+          <label>
+            状態
+            <select id="recordFilterStatus">
+              <option value="ALL">全件</option>
+              <option value="PENDING">未確認</option>
+              <option value="DONE">受取確定</option>
+            </select>
+          </label>
+          <label>
+            並び替え
+            <select id="recordSortSelect">
+              <option value="NEW_DESC">新しい順</option>
+              <option value="OLD_ASC">古い順</option>
+              <option value="AMOUNT_DESC">金額が高い順</option>
+              <option value="AMOUNT_ASC">金額が低い順</option>
+              <option value="PENDING_FIRST">未確認優先</option>
+            </select>
+          </label>
+          <label>
+            月
+            <input id="recordFilterMonth" type="month">
+          </label>
+          <label>
+            メモ検索
+            <input id="recordFilterKeyword" type="search" maxlength="120" placeholder="キーワード">
+          </label>
+          <div class="record-filter-actions">
+            <button id="clearRecordFiltersBtn" type="button" class="btn">条件クリア</button>
+          </div>
+        </form>
         <div id="recordsContainer" class="cards" aria-live="polite"></div>
         <div class="section-backtop">
           <button type="button" class="top-back-link">TOPへ戻る</button>
@@ -81,6 +126,16 @@
 
       <section id="receiverSummarySection" class="panel" aria-label="受け取った人ごとの一覧">
         <h2>受け取った人ごとの一覧</h2>
+        <div class="receiver-summary-controls">
+          <label for="receiverSummarySortSelect">
+            並び替え
+            <select id="receiverSummarySortSelect">
+              <option value="NAME_ASC">名前順</option>
+              <option value="PENDING_DESC">未確認が多い順</option>
+              <option value="AMOUNT_DESC">合計金額が多い順</option>
+            </select>
+          </label>
+        </div>
         <div id="receiverSummary" class="receiver-summary"></div>
         <div class="section-backtop">
           <button type="button" class="top-back-link">TOPへ戻る</button>
@@ -97,6 +152,14 @@
           受取人
           <select id="monthlyReceiverFilter">
             <option value="ALL">全員</option>
+          </select>
+        </label>
+        <label for="monthlyStatusFilter">
+          状態
+          <select id="monthlyStatusFilter">
+            <option value="ALL">全件</option>
+            <option value="PENDING">未確認のみ</option>
+            <option value="DONE">受取確定のみ</option>
           </select>
         </label>
         <div class="month-summary-result">

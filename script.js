@@ -7,6 +7,7 @@
   const RECEIVER_COLORS_STORAGE_KEY = "allowanceReceiverColorsV1";
   const RECEIVER_PINS_STORAGE_KEY = "allowanceReceiverPinsV1";
   const RECEIVER_PIN_LOCKS_STORAGE_KEY = "allowanceReceiverPinLocksV1";
+  const PANEL_COLLAPSE_STATE_STORAGE_KEY = "allowancePanelCollapseStateV1";
   const APP_EXPORT_VERSION = 2;
   const RECEIVER_COLOR_PALETTE = [
     { accent: "#E53935", soft: "#FDECEA" },
@@ -45,6 +46,7 @@
   const givenAtInput = document.getElementById("givenAt");
   const memoInput = document.getElementById("memo");
   const memoTemplateSelect = document.getElementById("memoTemplateSelect");
+  const keepLastPeopleCheck = document.getElementById("keepLastPeopleCheck");
   const recordFormModeBadge = document.getElementById("recordFormModeBadge");
   const submitRecordBtn = document.getElementById("submitRecordBtn");
   const cancelEditBtn = document.getElementById("cancelEditBtn");
@@ -62,8 +64,15 @@
   const totalAmountEl = document.getElementById("totalAmount");
   const monthlyTargetMonthInput = document.getElementById("monthlyTargetMonth");
   const monthlyReceiverFilterSelect = document.getElementById("monthlyReceiverFilter");
+  const monthlyStatusFilterSelect = document.getElementById("monthlyStatusFilter");
   const monthlyTotalAmountEl = document.getElementById("monthlyTotalAmount");
   const monthlyTotalCountEl = document.getElementById("monthlyTotalCount");
+  const recordFilterReceiverSelect = document.getElementById("recordFilterReceiver");
+  const recordFilterStatusSelect = document.getElementById("recordFilterStatus");
+  const recordSortSelect = document.getElementById("recordSortSelect");
+  const recordFilterMonthInput = document.getElementById("recordFilterMonth");
+  const recordFilterKeywordInput = document.getElementById("recordFilterKeyword");
+  const clearRecordFiltersBtn = document.getElementById("clearRecordFiltersBtn");
   const receiverColorForm = document.getElementById("receiverColorForm");
   const receiverColorTargetSelect = document.getElementById("receiverColorTarget");
   const receiverColorPicker = document.getElementById("receiverColorPicker");
@@ -84,6 +93,7 @@
   const recordsContainer = document.getElementById("recordsContainer");
   const cardTemplate = document.getElementById("recordCardTemplate");
   const receiverSummaryEl = document.getElementById("receiverSummary");
+  const receiverSummarySortSelect = document.getElementById("receiverSummarySortSelect");
   const sectionMenu = document.getElementById("sectionMenu");
   const showListViewBtn = document.getElementById("showListViewBtn");
   const showCalendarViewBtn = document.getElementById("showCalendarViewBtn");
@@ -101,16 +111,28 @@
   const restoreFileInput = document.getElementById("restoreFileInput");
   const deleteAllBtn = document.getElementById("deleteAllBtn");
   const messageArea = document.getElementById("messageArea");
+  const deleteUndoArea = document.getElementById("deleteUndoArea");
+  const undoDeleteBtn = document.getElementById("undoDeleteBtn");
   let expandedReceiverName = "";
+  let receiverSummarySortValue = "NAME_ASC";
+  let receiverDetailFilterValue = "ALL";
   let currentView = "list";
   let calendarMonthCursor = startOfMonth(new Date());
   let selectedDateKey = toDateKey(new Date());
   let monthlyTargetMonthKey = toMonthKey(new Date());
   let monthlyReceiverFilterValue = "ALL";
+  let monthlyStatusFilterValue = "ALL";
+  let recordFilterReceiverValue = "ALL";
+  let recordFilterStatusValue = "ALL";
+  let recordSortValue = "NEW_DESC";
+  let recordFilterMonthValue = "";
+  let recordFilterKeywordValue = "";
   let receiverColorTargetValue = "";
   let receiverPinTargetValue = "";
   let recentAddedRecordId = "";
   let editingRecordId = "";
+  /** @type {{record: Record<string, any>, index: number} | null} */
+  let lastDeletedRecord = null;
   /** @type {{receiverName:string,resolve:(value:boolean)=>void} | null} */
   let pinAuthContext = null;
 
@@ -152,6 +174,13 @@
     cancelEditBtn.addEventListener("click", onCancelEditRecord);
     monthlyTargetMonthInput.addEventListener("change", onMonthlyTargetMonthChanged);
     monthlyReceiverFilterSelect.addEventListener("change", onMonthlyReceiverFilterChanged);
+    monthlyStatusFilterSelect.addEventListener("change", onMonthlyStatusFilterChanged);
+    recordFilterReceiverSelect.addEventListener("change", onRecordFilterReceiverChanged);
+    recordFilterStatusSelect.addEventListener("change", onRecordFilterStatusChanged);
+    recordSortSelect.addEventListener("change", onRecordSortChanged);
+    recordFilterMonthInput.addEventListener("change", onRecordFilterMonthChanged);
+    recordFilterKeywordInput.addEventListener("input", onRecordFilterKeywordInput);
+    clearRecordFiltersBtn.addEventListener("click", onClearRecordFilters);
     receiverColorForm.addEventListener("submit", onSubmitReceiverColor);
     receiverColorTargetSelect.addEventListener("change", onReceiverColorTargetChanged);
     resetReceiverColorBtn.addEventListener("click", onResetReceiverColor);
@@ -163,6 +192,10 @@
     pinAuthForm.addEventListener("submit", onSubmitPinAuth);
     pinAuthCancelBtn.addEventListener("click", onCancelPinAuth);
     pinAuthDialog.addEventListener("cancel", onPinAuthDialogCancel);
+    if (receiverSummarySortSelect) {
+      receiverSummarySortSelect.addEventListener("change", onReceiverSummarySortChanged);
+    }
+    undoDeleteBtn.addEventListener("click", onUndoDelete);
     listView.addEventListener("click", onClickTopBackLink);
     if (sectionMenu) {
       sectionMenu.addEventListener("click", onClickSectionMenu);
@@ -174,9 +207,11 @@
   }
 
   function setupCollapsiblePanels() {
+    const panelStateMap = loadPanelCollapseStates();
     const panels = [...document.querySelectorAll("section.panel")];
-    panels.forEach((panel) => {
+    panels.forEach((panel, index) => {
       const sectionLabel = toSafeString(panel.getAttribute("aria-label"));
+      const panelKey = getPanelCollapseStateKey(panel, sectionLabel, index);
       panel.classList.add("is-collapsible");
 
       let heading = panel.querySelector(":scope > h2");
@@ -211,11 +246,42 @@
       };
 
       const shouldStartCollapsed = sectionLabel !== "カレンダー" && sectionLabel !== "記録追加";
-      applyPanelState(shouldStartCollapsed);
+      const storedCollapsed = panelStateMap[panelKey];
+      applyPanelState(typeof storedCollapsed === "boolean" ? storedCollapsed : shouldStartCollapsed);
       toggleBtn.addEventListener("click", () => {
-        applyPanelState(!panel.classList.contains("panel-collapsed"));
+        const nextCollapsed = !panel.classList.contains("panel-collapsed");
+        applyPanelState(nextCollapsed);
+        panelStateMap[panelKey] = nextCollapsed;
+        savePanelCollapseStates(panelStateMap);
       });
     });
+  }
+
+  function getPanelCollapseStateKey(panel, sectionLabel, index) {
+    const id = toSafeString(panel.id);
+    if (id) return `id:${id}`;
+    if (sectionLabel) return `label:${sectionLabel}`;
+    return `index:${index}`;
+  }
+
+  function loadPanelCollapseStates() {
+    try {
+      const raw = window.localStorage.getItem(PANEL_COLLAPSE_STATE_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+      return parsed;
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function savePanelCollapseStates(stateMap) {
+    try {
+      window.localStorage.setItem(PANEL_COLLAPSE_STATE_STORAGE_KEY, JSON.stringify(stateMap));
+    } catch (error) {
+      // localStorage 制限時は保持を諦める
+    }
   }
 
   function onClickSectionMenu(event) {
@@ -375,7 +441,11 @@
     persistAndRender();
     showMessage("記録を登録しました。一覧の先頭に追加されています。", false);
 
-    resetRecordFormToCreateMode({ resetForm: true, focusGiver: true });
+    resetRecordFormToCreateMode({
+      resetForm: true,
+      focusGiver: true,
+      keepPeopleValues: shouldKeepLastPeopleValues()
+    });
   }
 
   function onCancelEditRecord() {
@@ -422,12 +492,22 @@
     showMessage("編集中です。内容を修正して「記録を更新」を押してください。", false);
   }
 
-  function resetRecordFormToCreateMode({ resetForm = true, focusGiver = false } = {}) {
+  function resetRecordFormToCreateMode({
+    resetForm = true,
+    focusGiver = false,
+    keepPeopleValues = false
+  } = {}) {
     editingRecordId = "";
     updateRecordFormModeUI();
 
     if (resetForm) {
+      const nextGiver = keepPeopleValues ? giverInput.value : "";
+      const nextReceiver = keepPeopleValues ? receiverInput.value : "";
       form.reset();
+      if (keepPeopleValues) {
+        giverInput.value = nextGiver;
+        receiverInput.value = nextReceiver;
+      }
       givenAtInput.value = toDatetimeLocalValue(new Date());
       memoTemplateSelect.value = "";
     }
@@ -443,6 +523,10 @@
     recordFormModeBadge.hidden = !isEditing;
     cancelEditBtn.hidden = !isEditing;
     form.classList.toggle("is-editing", isEditing);
+  }
+
+  function shouldKeepLastPeopleValues() {
+    return keepLastPeopleCheck instanceof HTMLInputElement && keepLastPeopleCheck.checked;
   }
 
   function syncEditingState() {
@@ -552,6 +636,11 @@
 
   function onMonthlyReceiverFilterChanged(event) {
     monthlyReceiverFilterValue = event.target.value;
+    renderMonthlySummary();
+  }
+
+  function onMonthlyStatusFilterChanged(event) {
+    monthlyStatusFilterValue = event.target.value;
     renderMonthlySummary();
   }
 
@@ -701,6 +790,7 @@
     if (!ok) return;
 
     records = [];
+    clearDeleteUndoState();
     if (editingRecordId) {
       resetRecordFormToCreateMode({ resetForm: true, focusGiver: false });
     }
@@ -737,8 +827,9 @@
   }
 
   function onDeleteOne(recordId) {
-    const target = records.find((item) => item.id === recordId);
-    if (!target) return;
+    const targetIndex = records.findIndex((item) => item.id === recordId);
+    if (targetIndex === -1) return;
+    const target = records[targetIndex];
 
     const ok = window.confirm("この記録を削除します。よろしいですか？");
     if (!ok) return;
@@ -746,9 +837,33 @@
     if (recordId === editingRecordId) {
       resetRecordFormToCreateMode({ resetForm: true, focusGiver: false });
     }
+    lastDeletedRecord = {
+      record: { ...target },
+      index: targetIndex
+    };
+    renderDeleteUndoUI();
     records = records.filter((item) => item.id !== recordId);
     persistAndRender();
-    showMessage("記録を削除しました。", false);
+    showMessage("記録を削除しました。「元に戻す」で取り消せます。", false);
+  }
+
+  function onUndoDelete() {
+    if (!lastDeletedRecord) return;
+    const { record, index } = lastDeletedRecord;
+    const safeIndex = Math.max(0, Math.min(index, records.length));
+    records.splice(safeIndex, 0, record);
+    clearDeleteUndoState();
+    persistAndRender();
+    showMessage("削除を元に戻しました。", false);
+  }
+
+  function clearDeleteUndoState() {
+    lastDeletedRecord = null;
+    renderDeleteUndoUI();
+  }
+
+  function renderDeleteUndoUI() {
+    deleteUndoArea.hidden = !lastDeletedRecord;
   }
 
   function exportBackupJson() {
@@ -1139,6 +1254,7 @@
     renderStats();
     renderMonthlyReceiverFilterOptions();
     renderMonthlySummary();
+    renderRecordFilterOptions();
     renderReceiverColorManagement();
     renderReceiverPinManagement();
     renderRecords();
@@ -1462,13 +1578,19 @@
     }
 
     const monthRecords = records.filter((item) => toMonthKey(new Date(item.givenAt)) === monthlyTargetMonthKey);
-    const filteredMonthRecords = monthlyReceiverFilterValue === "ALL"
+    const receiverFilteredRecords = monthlyReceiverFilterValue === "ALL"
       ? monthRecords
       : monthRecords.filter((item) => item.receiver === monthlyReceiverFilterValue);
+    const filteredMonthRecords = monthlyStatusFilterValue === "PENDING"
+      ? receiverFilteredRecords.filter((item) => !item.received)
+      : monthlyStatusFilterValue === "DONE"
+        ? receiverFilteredRecords.filter((item) => item.received)
+        : receiverFilteredRecords;
     const monthlyTotalAmount = filteredMonthRecords.reduce((sum, item) => sum + item.amount, 0);
 
     monthlyTotalAmountEl.textContent = formatCurrency(monthlyTotalAmount);
     monthlyTotalCountEl.textContent = `${filteredMonthRecords.length}件`;
+    monthlyStatusFilterSelect.value = monthlyStatusFilterValue;
   }
 
   function renderMonthlyReceiverFilterOptions() {
@@ -1494,6 +1616,114 @@
     monthlyReceiverFilterSelect.value = monthlyReceiverFilterValue;
   }
 
+  function onRecordFilterReceiverChanged(event) {
+    recordFilterReceiverValue = event.target.value;
+    renderRecords();
+  }
+
+  function onRecordFilterStatusChanged(event) {
+    recordFilterStatusValue = event.target.value;
+    renderRecords();
+  }
+
+  function onRecordFilterMonthChanged(event) {
+    recordFilterMonthValue = toSafeString(event.target.value);
+    renderRecords();
+  }
+
+  function onRecordSortChanged(event) {
+    recordSortValue = event.target.value;
+    renderRecords();
+  }
+
+  function onRecordFilterKeywordInput(event) {
+    recordFilterKeywordValue = toSafeString(event.target.value);
+    renderRecords();
+  }
+
+  function onClearRecordFilters() {
+    recordFilterReceiverValue = "ALL";
+    recordFilterStatusValue = "ALL";
+    recordSortValue = "NEW_DESC";
+    recordFilterMonthValue = "";
+    recordFilterKeywordValue = "";
+    recordFilterReceiverSelect.value = recordFilterReceiverValue;
+    recordFilterStatusSelect.value = recordFilterStatusValue;
+    recordSortSelect.value = recordSortValue;
+    recordFilterMonthInput.value = recordFilterMonthValue;
+    recordFilterKeywordInput.value = recordFilterKeywordValue;
+    renderRecords();
+  }
+
+  function renderRecordFilterOptions() {
+    const receiverNames = getManagedReceiverNames();
+    const previousReceiver = recordFilterReceiverValue;
+
+    recordFilterReceiverSelect.innerHTML = "";
+    const allOption = document.createElement("option");
+    allOption.value = "ALL";
+    allOption.textContent = "全員";
+    recordFilterReceiverSelect.appendChild(allOption);
+
+    receiverNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      recordFilterReceiverSelect.appendChild(option);
+    });
+
+    const receiverExists = previousReceiver === "ALL" || receiverNames.includes(previousReceiver);
+    recordFilterReceiverValue = receiverExists ? previousReceiver : "ALL";
+    recordFilterReceiverSelect.value = recordFilterReceiverValue;
+    recordFilterStatusSelect.value = recordFilterStatusValue;
+    recordSortSelect.value = recordSortValue;
+    recordFilterMonthInput.value = recordFilterMonthValue;
+    recordFilterKeywordInput.value = recordFilterKeywordValue;
+  }
+
+  function getFilteredRecords() {
+    const keyword = toSafeString(recordFilterKeywordValue).toLowerCase();
+    return records.filter((item) => {
+      if (recordFilterReceiverValue !== "ALL" && item.receiver !== recordFilterReceiverValue) {
+        return false;
+      }
+      if (recordFilterStatusValue === "PENDING" && item.received) {
+        return false;
+      }
+      if (recordFilterStatusValue === "DONE" && !item.received) {
+        return false;
+      }
+      if (recordFilterMonthValue && toMonthKey(new Date(item.givenAt)) !== recordFilterMonthValue) {
+        return false;
+      }
+      if (keyword && !toSafeString(item.memo).toLowerCase().includes(keyword)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  function getSortedRecords(sourceRecords) {
+    const sorted = [...sourceRecords];
+    sorted.sort((a, b) => {
+      if (recordSortValue === "OLD_ASC") {
+        return new Date(a.givenAt).getTime() - new Date(b.givenAt).getTime();
+      }
+      if (recordSortValue === "AMOUNT_DESC") {
+        return b.amount - a.amount;
+      }
+      if (recordSortValue === "AMOUNT_ASC") {
+        return a.amount - b.amount;
+      }
+      if (recordSortValue === "PENDING_FIRST") {
+        if (a.received !== b.received) return a.received ? 1 : -1;
+        return new Date(b.givenAt).getTime() - new Date(a.givenAt).getTime();
+      }
+      return new Date(b.givenAt).getTime() - new Date(a.givenAt).getTime();
+    });
+    return sorted;
+  }
+
   function renderRecords() {
     recordsContainer.innerHTML = "";
 
@@ -1505,9 +1735,19 @@
       return;
     }
 
+    const filteredRecords = getFilteredRecords();
+    if (filteredRecords.length === 0) {
+      const emptyEl = document.createElement("p");
+      emptyEl.className = "empty";
+      emptyEl.textContent = "条件に一致する記録はありません。";
+      recordsContainer.appendChild(emptyEl);
+      return;
+    }
+    const sortedRecords = getSortedRecords(filteredRecords);
+
     const fragment = document.createDocumentFragment();
 
-    records.forEach((item) => {
+    sortedRecords.forEach((item) => {
       const node = cardTemplate.content.firstElementChild.cloneNode(true);
       node.dataset.recordId = item.id;
       const amountEl = node.querySelector(".amount");
@@ -1591,7 +1831,7 @@
     }
 
     const fragment = document.createDocumentFragment();
-    const sortedEntries = [...summaryMap.entries()].sort((a, b) => a[0].localeCompare(b[0], "ja"));
+    const sortedEntries = getSortedReceiverSummaryEntries(summaryMap);
 
     sortedEntries.forEach(([name, summary]) => {
       const card = document.createElement("article");
@@ -1607,7 +1847,11 @@
       triggerBtn.setAttribute("aria-expanded", expandedReceiverName === name ? "true" : "false");
       triggerBtn.setAttribute("aria-label", `${name} の記録を${expandedReceiverName === name ? "閉じる" : "開く"}`);
       triggerBtn.addEventListener("click", () => {
-        expandedReceiverName = expandedReceiverName === name ? "" : name;
+        const nextExpandedName = expandedReceiverName === name ? "" : name;
+        expandedReceiverName = nextExpandedName;
+        if (nextExpandedName) {
+          receiverDetailFilterValue = "ALL";
+        }
         renderReceiverSummary();
       });
 
@@ -1636,14 +1880,46 @@
         const detailWrap = document.createElement("div");
         detailWrap.className = "receiver-summary-detail";
 
-        const detailRecords = records
+        const filterWrap = document.createElement("div");
+        filterWrap.className = "receiver-detail-filter";
+
+        const allBtn = document.createElement("button");
+        allBtn.type = "button";
+        allBtn.className = "btn";
+        allBtn.textContent = "全件";
+        allBtn.classList.toggle("active", receiverDetailFilterValue === "ALL");
+        allBtn.addEventListener("click", () => {
+          receiverDetailFilterValue = "ALL";
+          renderReceiverSummary();
+        });
+
+        const pendingBtn = document.createElement("button");
+        pendingBtn.type = "button";
+        pendingBtn.className = "btn";
+        pendingBtn.textContent = "未確認のみ";
+        pendingBtn.classList.toggle("active", receiverDetailFilterValue === "PENDING");
+        pendingBtn.addEventListener("click", () => {
+          receiverDetailFilterValue = "PENDING";
+          renderReceiverSummary();
+        });
+
+        filterWrap.appendChild(allBtn);
+        filterWrap.appendChild(pendingBtn);
+        detailWrap.appendChild(filterWrap);
+
+        const allDetailRecords = records
           .filter((item) => item.receiver === name)
           .sort((a, b) => new Date(b.givenAt).getTime() - new Date(a.givenAt).getTime());
+        const detailRecords = receiverDetailFilterValue === "PENDING"
+          ? allDetailRecords.filter((item) => !item.received)
+          : allDetailRecords;
 
         if (detailRecords.length === 0) {
           const emptyEl = document.createElement("p");
           emptyEl.className = "empty";
-          emptyEl.textContent = "記録はありません。";
+          emptyEl.textContent = receiverDetailFilterValue === "PENDING"
+            ? "未確認の記録はありません。"
+            : "記録はありません。";
           detailWrap.appendChild(emptyEl);
         } else {
           const detailFragment = document.createDocumentFragment();
@@ -1711,6 +1987,38 @@
     });
 
     receiverSummaryEl.appendChild(fragment);
+  }
+
+  function onReceiverSummarySortChanged(event) {
+    receiverSummarySortValue = event.target.value;
+    renderReceiverSummary();
+  }
+
+  function getSortedReceiverSummaryEntries(summaryMap) {
+    const entries = [...summaryMap.entries()];
+    if (receiverSummarySortSelect) {
+      receiverSummarySortSelect.value = receiverSummarySortValue;
+    }
+
+    if (receiverSummarySortValue === "PENDING_DESC") {
+      return entries.sort((a, b) => {
+        if (b[1].unreceivedCount !== a[1].unreceivedCount) {
+          return b[1].unreceivedCount - a[1].unreceivedCount;
+        }
+        return a[0].localeCompare(b[0], "ja");
+      });
+    }
+
+    if (receiverSummarySortValue === "AMOUNT_DESC") {
+      return entries.sort((a, b) => {
+        if (b[1].totalAmount !== a[1].totalAmount) {
+          return b[1].totalAmount - a[1].totalAmount;
+        }
+        return a[0].localeCompare(b[0], "ja");
+      });
+    }
+
+    return entries.sort((a, b) => a[0].localeCompare(b[0], "ja"));
   }
 
   function getSortedReceiverNames() {

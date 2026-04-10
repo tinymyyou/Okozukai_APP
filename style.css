@@ -228,12 +228,6 @@ body {
   border-color: #8fbfa0;
 }
 
-#showCalendarViewBtn.active {
-  background: linear-gradient(135deg, #ef8780, #e56f69);
-  color: #ffffff;
-  border-color: #cf5f5a;
-}
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -396,6 +390,23 @@ body {
   gap: 12px;
 }
 
+.record-filter {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.record-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.record-filter-actions .btn {
+  min-height: 40px;
+  padding: 9px 12px;
+  font-size: 0.92rem;
+}
+
 .record-form-mode {
   margin: 0;
   padding: 8px 10px;
@@ -410,6 +421,21 @@ body {
 .record-form-actions {
   display: grid;
   gap: 8px;
+}
+
+.record-keep-people {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.record-keep-people input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
 }
 
 .record-form.is-editing #submitRecordBtn {
@@ -625,6 +651,18 @@ textarea {
   animation: message-pop 220ms ease-out;
 }
 
+.delete-undo {
+  margin: 6px 2px 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.delete-undo .btn {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
 .cards {
   display: grid;
   gap: 12px;
@@ -633,6 +671,10 @@ textarea {
 .receiver-summary {
   display: grid;
   gap: 8px;
+}
+
+.receiver-summary-controls {
+  margin-bottom: 10px;
 }
 
 .receiver-summary-card {
@@ -681,6 +723,23 @@ textarea {
   padding-top: 10px;
   display: grid;
   gap: 8px;
+}
+
+.receiver-detail-filter {
+  display: flex;
+  gap: 8px;
+}
+
+.receiver-detail-filter .btn {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 0.86rem;
+}
+
+.receiver-detail-filter .btn.active {
+  background: linear-gradient(135deg, #9fcead, #b8dcc2);
+  border: 1px solid #8fbfa0;
+  color: #1f4a34;
 }
 
 .receiver-detail-item {
@@ -929,7 +988,8 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .record-form label:nth-child(5),
+  .record-form label.memo-field,
+  .record-form .record-keep-people,
   .record-form .record-form-mode,
   .record-form .record-form-actions {
     grid-column: 1 / -1;
@@ -937,6 +997,15 @@ textarea {
 
   .record-form .record-form-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .record-filter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .record-filter .record-filter-actions {
+    grid-column: 1 / -1;
   }
 
   .person-form {
