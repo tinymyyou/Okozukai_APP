@@ -99,6 +99,33 @@ body {
   font-size: 1.04rem;
 }
 
+.settings-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--line-strong);
+}
+
+.settings-toc-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #faf7f3;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.settings-toc-link:active {
+  transform: translateY(1px);
+}
+
 #listView .panel:nth-of-type(5n + 1) {
   background: linear-gradient(180deg, #ffffff, #fdf5f4);
 }
@@ -392,19 +419,48 @@ body {
 
 .record-filter {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 8px;
   margin-bottom: 12px;
+}
+
+.record-filter label {
+  gap: 4px;
+  font-size: 0.88rem;
+}
+
+.record-filter label:last-of-type {
+  grid-column: 1 / -1;
+}
+
+.record-filter input,
+.record-filter select {
+  padding: 10px 11px;
+  font-size: 0.95rem;
 }
 
 .record-filter-actions {
   display: flex;
   justify-content: flex-end;
+  grid-column: 1 / -1;
 }
 
 .record-filter-actions .btn {
-  min-height: 40px;
+  min-height: 36px;
   padding: 9px 12px;
   font-size: 0.92rem;
+}
+
+@media (max-width: 420px) {
+  .record-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .record-filter label:last-of-type,
+  .record-filter .record-filter-actions {
+    grid-column: auto;
+  }
 }
 
 .record-form-mode {

@@ -8,6 +8,7 @@
   const RECEIVER_PINS_STORAGE_KEY = "allowanceReceiverPinsV1";
   const RECEIVER_PIN_LOCKS_STORAGE_KEY = "allowanceReceiverPinLocksV1";
   const PANEL_COLLAPSE_STATE_STORAGE_KEY = "allowancePanelCollapseStateV1";
+  const DELETE_UNDO_VISIBLE_MS = 7000;
   const APP_EXPORT_VERSION = 2;
   const RECEIVER_COLOR_PALETTE = [
     { accent: "#E53935", soft: "#FDECEA" },
@@ -133,6 +134,7 @@
   let editingRecordId = "";
   /** @type {{record: Record<string, any>, index: number} | null} */
   let lastDeletedRecord = null;
+  let deleteUndoTimerId = 0;
   /** @type {{receiverName:string,resolve:(value:boolean)=>void} | null} */
   let pinAuthContext = null;
 
@@ -842,6 +844,7 @@
       index: targetIndex
     };
     renderDeleteUndoUI();
+    scheduleDeleteUndoAutoClose();
     records = records.filter((item) => item.id !== recordId);
     persistAndRender();
     showMessage("記録を削除しました。「元に戻す」で取り消せます。", false);
@@ -858,12 +861,26 @@
   }
 
   function clearDeleteUndoState() {
+    clearDeleteUndoTimer();
     lastDeletedRecord = null;
     renderDeleteUndoUI();
   }
 
   function renderDeleteUndoUI() {
     deleteUndoArea.hidden = !lastDeletedRecord;
+  }
+
+  function scheduleDeleteUndoAutoClose() {
+    clearDeleteUndoTimer();
+    deleteUndoTimerId = window.setTimeout(() => {
+      clearDeleteUndoState();
+    }, DELETE_UNDO_VISIBLE_MS);
+  }
+
+  function clearDeleteUndoTimer() {
+    if (!deleteUndoTimerId) return;
+    window.clearTimeout(deleteUndoTimerId);
+    deleteUndoTimerId = 0;
   }
 
   function exportBackupJson() {
@@ -2342,6 +2359,13 @@
         editBtn.addEventListener("click", () => startEditRecord(item.id));
         actionsEl.appendChild(editBtn);
       }
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "btn danger delete-btn";
+      deleteBtn.textContent = "削除";
+      deleteBtn.addEventListener("click", () => onDeleteOne(item.id));
+      actionsEl.appendChild(deleteBtn);
 
       card.appendChild(top);
       card.appendChild(peopleEl);

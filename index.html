@@ -112,7 +112,7 @@
           </label>
           <label>
             メモ検索
-            <input id="recordFilterKeyword" type="search" maxlength="120" placeholder="キーワード">
+            <input id="recordFilterKeyword" type="search" maxlength="120" placeholder="メモ内キーワード">
           </label>
           <div class="record-filter-actions">
             <button id="clearRecordFiltersBtn" type="button" class="btn">条件クリア</button>
@@ -195,7 +195,15 @@
       <section id="settingsSection" class="panel settings-panel" aria-label="設定">
         <h2>設定</h2>
 
-        <div class="settings-group" aria-label="人の登録">
+        <nav class="settings-toc" aria-label="設定内メニュー">
+          <a class="settings-toc-link" href="#settingsGroupPeople">人の登録</a>
+          <a class="settings-toc-link" href="#settingsGroupMemo">メモ定型文</a>
+          <a class="settings-toc-link" href="#settingsGroupColor">色設定</a>
+          <a class="settings-toc-link" href="#settingsGroupPin">PIN設定</a>
+          <a class="settings-toc-link" href="#settingsGroupBackup">バックアップ</a>
+        </nav>
+
+        <div id="settingsGroupPeople" class="settings-group" aria-label="人の登録">
           <h3>人の登録</h3>
           <form id="personForm" class="person-form" novalidate>
             <label>
@@ -224,7 +232,7 @@
           </div>
         </div>
 
-        <div class="settings-group" aria-label="メモ定型文の登録">
+        <div id="settingsGroupMemo" class="settings-group" aria-label="メモ定型文の登録">
           <h3>メモ定型文の登録</h3>
           <form id="memoTemplateForm" class="memo-template-form" novalidate>
             <label>
@@ -237,7 +245,7 @@
           <div id="memoTemplateList" class="person-chip-list"></div>
         </div>
 
-        <div class="settings-group" aria-label="受取人ごとの色設定">
+        <div id="settingsGroupColor" class="settings-group" aria-label="受取人ごとの色設定">
           <h3>受取人ごとの色設定</h3>
           <form id="receiverColorForm" class="receiver-color-form" novalidate>
             <label>
@@ -259,7 +267,7 @@
           <button type="button" class="top-back-link">TOPへ戻る</button>
         </div>
 
-        <div class="settings-group" aria-label="受取人ごとのPIN設定">
+        <div id="settingsGroupPin" class="settings-group" aria-label="受取人ごとのPIN設定">
           <h3>受取人ごとのPIN設定</h3>
           <form id="receiverPinForm" class="receiver-pin-form" novalidate>
             <label>
@@ -279,7 +287,7 @@
           <div id="receiverPinList" class="receiver-pin-list"></div>
         </div>
 
-        <div class="settings-group" aria-label="バックアップとデータ管理">
+        <div id="settingsGroupBackup" class="settings-group" aria-label="バックアップとデータ管理">
           <h3>バックアップとデータ管理</h3>
           <div class="tool-grid">
             <button id="downloadJsonBtn" type="button" class="btn">JSONバックアップ書き出し</button>
